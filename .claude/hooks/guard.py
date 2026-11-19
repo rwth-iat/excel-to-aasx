@@ -9,14 +9,21 @@ import sys
 
 BLOCKED = [
     (
-        r"\brm\b[^|;&]*\.(xlsx|aasx|pdf)\b",
+        # `rm` as a command (at the start, after ; & | ( or sudo), not docker's `--rm` flag.
+        r"(?:^|[;&|(]\s*|\bsudo\s+)rm\s[^|;&]*\.(xlsx|aasx|pdf)\b",
         "Example Excel/AASX/PDF files are reference fixtures that cannot be regenerated. "
         "Generated output goes to out/ and is removed as a directory. Ask the user first.",
     ),
     (r"\bgit\s+push\b.*(--force|-f\b|--force-with-lease)", "Force-push rewrites shared history."),
-    (r"\bgit\s+push\b.*\b(main|master)\b", "Never push to main. Push the feature branch, merge via PR."),
+    (
+        r"\bgit\s+push\b.*\b(main|master)\b",
+        "Never push to main. Push the feature branch, merge via PR.",
+    ),
     (r"\bgit\s+reset\s+--hard\b", "Hard reset discards work. Ask the user first."),
-    (r"\bgit\s+clean\b.*-[a-zA-Z]*f", "git clean deletes untracked files, fixtures included. Ask the user first."),
+    (
+        r"\bgit\s+clean\b.*-[a-zA-Z]*f",
+        "git clean deletes untracked files, fixtures included. Ask the user first.",
+    ),
 ]
 
 

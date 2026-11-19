@@ -17,6 +17,18 @@ uv run excel-to-aasx adoc "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_del
 uv run excel-to-aasx pdf "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/pdf
 ```
 
+## Web app
+
+```bash
+uv run excel-to-aasx serve --port 8000
+```
+
+Open http://127.0.0.1:8000, upload a workbook or an AASX, download the AASX, edit the AsciiDoc
+with a live HTML preview and build the PDF on request. Nothing is stored: sessions are
+temporary folders (`EXCEL_TO_AASX_WORKSPACES`, default in the system temp dir) deleted after
+two hours idle. Edits stay in the AsciiDoc download and the PDF; the AASX download contains the
+starter document, not the edits.
+
 `pdf` needs Docker and the image `asciidoctor/docker-asciidoctor:1.108.1`
 (`docker pull asciidoctor/docker-asciidoctor:1.108.1`). The build runs in a locked-down
 container in secure mode; see `docs/decisions/0004-pdf-build-in-locked-down-docker.md`.

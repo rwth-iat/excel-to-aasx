@@ -8,13 +8,16 @@ dependencies = [
     "aas-core3.1>=1.0,<2",
     "defusedxml>=0.7,<1",
     "openpyxl>=3.1,<4",
+    "fastapi>=0.115,<1",
+    "python-multipart>=0.0.18",
+    "uvicorn>=0.32,<1",
 ]
 
 [project.scripts]
 excel-to-aasx = "excel_to_aasx.main:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "pyright>=1.1.380", "types-defusedxml>=0.7"]
+dev = ["pytest>=8", "ruff>=0.6", "pyright>=1.1.380", "types-defusedxml>=0.7", "httpx>=0.27"]
 
 [build-system]
 requires = ["hatchling"]
@@ -41,7 +44,12 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/excel_to_aasx"]
-artifacts = ["src/excel_to_aasx/adapters/pdf/extensions/*.rb"]
+artifacts = [
+    "src/excel_to_aasx/adapters/pdf/extensions/*.rb",
+    "src/excel_to_aasx/adapters/templates/**/*",
+    "src/excel_to_aasx/adapters/web/static/**/*",
+]

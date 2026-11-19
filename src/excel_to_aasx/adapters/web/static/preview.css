@@ -1,0 +1,13 @@
+/* Styles for the HTML preview inside the sandboxed iframe (no inline styles allowed). */
+body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.45; color: #1d2433; margin: 1.5rem 2rem; }
+h1, h2, h3, h4 { color: #0029cc; line-height: 1.2; }
+h1 { font-size: 1.8rem; }
+h2 { font-size: 1.4rem; border-bottom: 1px solid #d8dde6; padding-bottom: .2rem; margin-top: 2rem; }
+h3 { font-size: 1.15rem; margin-top: 1.5rem; }
+img { max-width: 100%; }
+table { border-collapse: collapse; width: 100%; margin: .8rem 0; font-size: 12px; }
+th, td { border: 1px solid #c6ccd8; padding: .3rem .4rem; vertical-align: top; }
+.tableblock .title, .imageblock .title, .listingblock .title { font-style: italic; color: #667085; margin: .2rem 0; }
+pre { background: #f4f6fa; padding: .6rem; overflow: auto; font-size: 12px; }
+.white, .huge, .large { font-weight: 600; }
+code { background: #f4f6fa; padding: 0 .2rem; }

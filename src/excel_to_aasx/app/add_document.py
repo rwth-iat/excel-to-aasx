@@ -30,5 +30,9 @@ def add_document(
     return editor.add_document(source, target, nodes, data_id)
 
 
+def has_document(editor: PackageEditor, source: str) -> bool:
+    return any(_is_document(m.semantic_id) for m in editor.models(source).values())
+
+
 def _is_document(semantic_id) -> bool:
     return semantic_id is not None and any(v == SUBMODEL_SEMANTIC_ID for _, v in semantic_id.keys)

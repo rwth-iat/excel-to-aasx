@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csp-nonce" content="{{nonce}}">
+  <title>excel-to-aasx</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script type="module" src="/static/js/app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <span class="brand">excel-to-aasx</span>
+    <span class="tagline">Excel → AASX → AsciiDoc → PDF</span>
+    <nav id="actions" class="actions" hidden>
+      <a id="download-aasx" class="button" download>Download AASX</a>
+      <a id="download-zip" class="button" download>Download AsciiDoc (.zip)</a>
+      <button id="build-pdf" class="button primary" type="button">Build PDF</button>
+      <span id="status" class="status" role="status"></span>
+    </nav>
+  </header>
+
+  <main id="start" class="start">
+    <section class="card">
+      <h1>Turn a property workbook into an AAS package and its specification</h1>
+      <p>Upload an Excel workbook in the <em>Import NAMUR SMTs</em> layout, or an AASX package.
+        You get the AASX and an IDTA-style document you can edit here, with a live preview and a PDF on request.</p>
+      <label id="drop" class="drop">
+        <input id="file" type="file" accept=".xlsx,.aasx">
+        <span>Drop a <strong>.xlsx</strong> or <strong>.aasx</strong> file here, or click to choose one</span>
+      </label>
+      <p class="fine">Nothing is stored: your files are deleted when you leave or after two hours of inactivity.
+        Download what you want to keep.</p>
+      <p id="error" class="error" role="alert" hidden></p>
+    </section>
+  </main>
+
+  <main id="workspace" class="workspace" hidden>
+    <details id="issues" class="issues">
+      <summary id="issues-summary"></summary>
+      <ul id="issues-list"></ul>
+    </details>
+    <div class="split">
+      <section class="pane">
+        <div class="pane-head">AsciiDoc <span id="doc-name" class="muted"></span></div>
+        <div id="editor" class="editor"></div>
+      </section>
+      <section class="pane">
+        <div class="pane-head tabs" role="tablist">
+          <button id="tab-html" class="tab active" type="button" role="tab">Preview</button>
+          <button id="tab-pdf" class="tab" type="button" role="tab" disabled>PDF</button>
+          <span class="muted hint">The preview approximates the PDF; diagrams, theme and page layout appear only in the PDF.</span>
+        </div>
+        <iframe id="preview" class="preview" sandbox title="HTML preview"></iframe>
+        <iframe id="pdf" class="preview" title="PDF" hidden></iframe>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

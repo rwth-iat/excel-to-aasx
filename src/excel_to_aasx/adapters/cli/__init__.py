@@ -14,6 +14,7 @@ CompareFn = Callable[[str, str, Mount | None], ComparisonReport]
 ImportFn = Callable[[str, str, str | None], ImportResult]
 ExportFn = Callable[[str, str, str | None], tuple[RenderedDocument, str]]
 AddDocumentFn = Callable[[str, str, str | None], str]
+ServeFn = Callable[[str, int], None]
 
 
 def run(
@@ -23,6 +24,7 @@ def run(
     export: ExportFn,
     pdf: ExportFn,
     add_document: AddDocumentFn,
+    serve: ServeFn | None = None,
     out: TextIO = sys.stdout,
 ) -> int:
     args = _parser().parse_args(argv)
@@ -31,6 +33,11 @@ def run(
             result = import_(args.workbook, args.output, args.submodel_id)
             print_import(result, args.output, out)
             return 1 if result.has_errors else 0
+        if args.command == "serve":
+            if serve is None:
+                raise ValueError("the web app is not available")
+            serve(args.host, args.port)
+            return 0
         if args.command == "add-document":
             id_short = add_document(args.package, args.output, args.submodel)
             print(f"wrote {args.output}: added AsciiDoc submodel {id_short}", file=out)
@@ -58,24 +65,23 @@ def _parser() -> argparse.ArgumentParser:
     imp.add_argument("-o", "--output", required=True, help="AASX file to write")
     imp.add_argument("--submodel-id", help="submodel id (default: derived, stable)")
 
-    add = commands.add_parser("add-document", help="add an IDTA starter document (ADR 0008)")
-    add.add_argument("package", help="AASX with the data submodel, e.g. from `import`")
-    add.add_argument("-o", "--output", required=True, help="AASX file to write")
-    add.add_argument("--submodel", help="idShort of the data submodel, if there are several")
+    web = commands.add_parser("serve", help="run the web app (ADR 0005-0007)")
+    web.add_argument("--host", default="127.0.0.1", help="interface to listen on")
+    web.add_argument("--port", type=int, default=8000)
 
-    adoc = commands.add_parser("adoc", help="export the AsciiDoc submodel of an AASX")
-    adoc.add_argument("package", help="AASX with a Package Explorer AsciiDoc submodel")
-    adoc.add_argument("-o", "--output", required=True, help="folder for the .adoc and its files")
-    adoc.add_argument(
-        "--submodel", help="idShort of the AsciiDoc submodel (default: by semanticId)"
-    )
-
-    pdf_cmd = commands.add_parser("pdf", help="export the AsciiDoc submodel and build the PDF")
-    pdf_cmd.add_argument("package", help="AASX with a Package Explorer AsciiDoc submodel")
-    pdf_cmd.add_argument("-o", "--output", required=True, help="folder for .adoc, files and PDF")
-    pdf_cmd.add_argument(
-        "--submodel", help="idShort of the AsciiDoc submodel (default: by semanticId)"
-    )
+    package_commands = (
+        ("add-document", "add an IDTA starter document (ADR 0008)", "AASX file to write",
+         "idShort of the data submodel, if there are several"),
+        ("adoc", "export the AsciiDoc submodel of an AASX", "folder for the .adoc and its files",
+         "idShort of the AsciiDoc submodel (default: by semanticId)"),
+        ("pdf", "export the AsciiDoc submodel and build the PDF", "folder for .adoc, files and PDF",
+         "idShort of the AsciiDoc submodel (default: by semanticId)"),
+    )  # fmt: skip
+    for name, help_text, output_help, submodel_help in package_commands:
+        command = commands.add_parser(name, help=help_text)
+        command.add_argument("package", help="AASX package")
+        command.add_argument("-o", "--output", required=True, help=output_help)
+        command.add_argument("--submodel", help=submodel_help)
 
     diff = commands.add_parser(
         "diff", help="check that REFERENCE contains every element and concept of EXPECTED"

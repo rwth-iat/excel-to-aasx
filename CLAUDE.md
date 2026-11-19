@@ -19,6 +19,8 @@ uv run excel-to-aasx add-document out/import.aasx -o out/doc.aasx   # IDTA start
 uv run excel-to-aasx adoc examples/*.aasx -o out/doc          # AsciiDoc submodel -> folder
 uv run excel-to-aasx pdf examples/*.aasx -o out/pdf           # ... plus PDF (needs Docker, ADR 0004)
 docker pull asciidoctor/docker-asciidoctor:1.108.1            # once; tests that need it skip without it
+uv run excel-to-aasx serve --port 8000                        # web app (ADR 0005-0007)
+tools/vendor.sh                                               # rebuild vendored JS (needs npm)
 ```
 
 ## Reference material (`examples/`)

@@ -1,8 +1,11 @@
 """Composition root: the only place that constructs adapters."""
 
 import datetime
+import os
 import sys
+import tempfile
 from functools import partial
+from pathlib import Path
 
 from excel_to_aasx.adapters import cli
 from excel_to_aasx.adapters.aasx import AasxPackageReader, AasxPackageWriter
@@ -12,17 +15,21 @@ from excel_to_aasx.adapters.excel import ExcelSheetReader
 from excel_to_aasx.adapters.files import FolderDocumentWriter
 from excel_to_aasx.adapters.pdf import DockerPdfCompiler
 from excel_to_aasx.adapters.templates import load_frame
-from excel_to_aasx.app.add_document import add_document
+from excel_to_aasx.adapters.web import WebLimits, WebServices, Workspaces, create_app
+from excel_to_aasx.app.add_document import add_document, has_document
 from excel_to_aasx.app.build_pdf import build_pdf
 from excel_to_aasx.app.compare_packages import compare_packages
 from excel_to_aasx.app.export_document import export_document
 from excel_to_aasx.app.import_workbook import import_workbook
+from excel_to_aasx.app.open_upload import open_upload
 
 MAX_PACKAGE_PART_BYTES = 200 * 1024 * 1024
 MAX_WORKBOOK_BYTES = 200 * 1024 * 1024
 # Pinned: the PDF layout depends on asciidoctor-pdf's version (ADR 0004).
 ASCIIDOCTOR_IMAGE = "asciidoctor/docker-asciidoctor:1.108.1"
 PDF_TIMEOUT_SECONDS = 300
+WORKSPACE_IDLE_SECONDS = 2 * 60 * 60
+MAX_WORKSPACES = 200
 
 
 def main() -> int:
@@ -41,10 +48,31 @@ def main() -> int:
         FolderDocumentWriter(),
         DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS),
     )
-    add = partial(_add_document, AasxDocumentEditor(MAX_PACKAGE_PART_BYTES))
+    editor = AasxDocumentEditor(MAX_PACKAGE_PART_BYTES)
+    add = partial(_add_document, editor)
+    opener = partial(open_upload, import_, add, partial(has_document, editor), export)
+    compiler = DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS)
+    web = WebServices(open_upload=opener, compile_pdf=compiler.compile)
+    serve = partial(_serve, web)
     return cli.run(
-        sys.argv[1:], compare=compare, import_=import_, export=export, pdf=pdf, add_document=add
+        sys.argv[1:],
+        compare=compare,
+        import_=import_,
+        export=export,
+        pdf=pdf,
+        add_document=add,
+        serve=serve,
     )
+
+
+def _serve(services: WebServices, host: str, port: int) -> None:
+    import uvicorn
+
+    root = Path(
+        os.environ.get("EXCEL_TO_AASX_WORKSPACES") or Path(tempfile.gettempdir()) / "excel-to-aasx"
+    )
+    workspaces = Workspaces(root, idle_seconds=WORKSPACE_IDLE_SECONDS, max_count=MAX_WORKSPACES)
+    uvicorn.run(create_app(services, workspaces, WebLimits()), host=host, port=port)
 
 
 def _add_document(

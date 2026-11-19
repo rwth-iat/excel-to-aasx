@@ -5,7 +5,7 @@ Anything extra in `reference` is allowed.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 
 from excel_to_aasx.domain.report import ComparisonReport, Difference, Mount
 from excel_to_aasx.domain.snapshot import ConceptFacts, ElementFacts, PackageSnapshot
@@ -55,6 +55,7 @@ def _element_fields(want: ElementFacts, got: ElementFacts) -> list[tuple[str, st
         ("semantic_id", strip_version(want.semantic_id), strip_version(got.semantic_id)),
         ("cardinality", want.cardinality, got.cardinality),
         ("value_type", want.value_type, got.value_type),
+        ("display_names", _langs(sorted(want.display_names)), _langs(sorted(got.display_names))),
     ]
 
 
@@ -72,15 +73,10 @@ def compare_concepts(
             want, got = getattr(facts, name), getattr(actual, name)
             if want != got:
                 differences.append(Difference(cd_id, f"concept {name}", want, got))
-        if set(facts.preferred_names) - set(actual.preferred_names):
-            differences.append(
-                Difference(
-                    cd_id,
-                    "concept preferred_names",
-                    _langs(facts.preferred_names),
-                    _langs(actual.preferred_names),
-                )
-            )
+        for name in ("preferred_names", "definitions"):
+            want, got = getattr(facts, name), getattr(actual, name)
+            if set(want) - set(got):
+                differences.append(Difference(cd_id, f"concept {name}", _langs(want), _langs(got)))
     return differences
 
 
@@ -105,5 +101,5 @@ def _single_submodel(snapshot: PackageSnapshot) -> Mapping[str, ElementFacts]:
     return next(iter(snapshot.submodels.values()))
 
 
-def _langs(names: tuple[tuple[str, str], ...]) -> str:
+def _langs(names: Iterable[tuple[str, str]]) -> str:
     return "; ".join(f"{lang}: {text}" for lang, text in names)

@@ -38,21 +38,30 @@ def _global_ref(value: str) -> aas.Reference:
     )
 
 
-def property_(id_short: str, semantic_id: str, card: str = "One") -> aas.Property:
+def property_(
+    id_short: str, semantic_id: str, card: str = "One", names: dict[str, str] | None = None
+) -> aas.Property:
     return aas.Property(
         id_short=id_short,
         value_type=aas.DataTypeDefXSD.STRING,
         semantic_id=_global_ref(semantic_id),
         qualifiers=[_cardinality(card)],
+        display_name=_names(names),
     )
 
 
-def collection(id_short: str, semantic_id: str, *children: aas.SubmodelElement):
+def collection(
+    id_short: str,
+    semantic_id: str,
+    *children: aas.SubmodelElement,
+    names: dict[str, str] | None = None,
+):
     return aas.SubmodelElementCollection(
         id_short=id_short,
         semantic_id=_global_ref(semantic_id),
         qualifiers=[_cardinality("One")],
         value=list(children),
+        display_name=_names(names),
     )
 
 
@@ -64,3 +73,7 @@ def submodel(id_short: str, *elements: aas.SubmodelElement) -> aas.Submodel:
     return aas.Submodel(
         id=f"urn:test:{id_short}", id_short=id_short, submodel_elements=list(elements)
     )
+
+
+def _names(names: dict[str, str] | None) -> list[aas.LangStringNameType] | None:
+    return [aas.LangStringNameType(lang, text) for lang, text in (names or {}).items()] or None

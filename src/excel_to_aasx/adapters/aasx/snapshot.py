@@ -47,6 +47,7 @@ def _element_facts(element: aas.SubmodelElement) -> ElementFacts:
             "",
         ),
         value_type=value_type.value if isinstance(value_type, aas.DataTypeDefXSD) else "",
+        display_names=tuple((name.language, name.text) for name in element.display_name or []),
     )
 
 
@@ -69,4 +70,5 @@ def _concept_facts(concept: aas.ConceptDescription) -> ConceptFacts:
         id_short=concept.id_short or "",
         preferred_names=tuple((name.language, name.text) for name in iec.preferred_name),
         unit=iec.unit or "",
+        definitions=tuple((text.language, text.text) for text in iec.definition or []),
     )

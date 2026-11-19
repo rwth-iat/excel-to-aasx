@@ -7,6 +7,8 @@ from excel_to_aasx.app.compare_packages import compare_packages
 from tests.aasx_fixture import collection, environment, property_, submodel, write_aasx
 from tests.adapters.test_aasx_reader import EXAMPLE, LIMIT
 
+NAMES = {"en": "manufacturer article number", "de": "Herstellerartikelnummer"}
+
 
 def _diff(*args: str) -> tuple[int, str]:
     out = io.StringIO()
@@ -15,12 +17,16 @@ def _diff(*args: str) -> tuple[int, str]:
 
 
 def _general(*children):
-    return collection("General", "0173-1#02-temp1", *children)
+    names = {"en": "General", "de": "Allgemein"}
+    return collection("General", "0173-1#02-temp1", *children, names=names)
 
 
 def test_subset_of_example_has_no_differences(tmp_path):
     produced = environment(
-        submodel("Import", _general(property_("ManufacturerArticleNumber", "0173-1#02-AAO676")))
+        submodel(
+            "Import",
+            _general(property_("ManufacturerArticleNumber", "0173-1#02-AAO676", names=NAMES)),
+        )
     )
     code, out = _diff(str(write_aasx(tmp_path / "p.aasx", produced)), str(EXAMPLE))
     assert code == 0, out
@@ -32,7 +38,7 @@ def test_reports_differences_against_example(tmp_path):
         submodel(
             "Import",
             _general(
-                property_("ManufacturerArticleNumber", "0173-1#02-AAO676", "ZeroToOne"),
+                property_("ManufacturerArticleNumber", "0173-1#02-AAO676", "ZeroToOne", NAMES),
                 property_("NotInReference", "x:y"),
             ),
         )
@@ -49,3 +55,4 @@ def test_explicit_mount_and_bad_input(tmp_path):
     code, out = _diff(path, str(EXAMPLE), "--submodel", "NamurTechnicalDataVariableAreaFlowMeter")
     assert code == 1 and "General  missing" in out
     assert _diff(path, str(tmp_path / "missing.aasx"))[0] == 2
+

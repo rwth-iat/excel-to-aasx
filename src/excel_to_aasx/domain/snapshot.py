@@ -10,6 +10,7 @@ class ElementFacts:
     semantic_id: str = ""
     cardinality: str = ""
     value_type: str = ""
+    display_names: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,7 @@ class ConceptFacts:
     id_short: str = ""
     preferred_names: tuple[tuple[str, str], ...] = ()
     unit: str = ""
+    definitions: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

@@ -3,6 +3,7 @@
 import hashlib
 from collections.abc import Iterator, Sequence
 
+from excel_to_aasx.domain.ids import remove_version
 from excel_to_aasx.domain.importing.blocks import Block, BodyRow, Top
 from excel_to_aasx.domain.importing.cells import (
     is_valid_id_short,
@@ -130,7 +131,8 @@ class _Builder:
         return value_type or "xs:string"
 
     def _add_concept(self, row: BodyRow, concept_id: str) -> None:
-        if concept_id in self._concepts:
+        key = remove_version(concept_id)
+        if key in self._concepts:
             return
         concept = Concept(
             concept_id,
@@ -141,7 +143,7 @@ class _Builder:
             definitions=tuple(_texts(("en", row.definition_en), ("de", row.definition_de))),
             unit=row.unit,
         )
-        self._concepts[concept_id] = concept
+        self._concepts[key] = concept
         self.result.concepts.append(concept)
 
     def check_id_shorts(self) -> None:

@@ -26,10 +26,7 @@ def test_example_exports_without_errors(exported):
     document, main_file = exported
     assert main_file.endswith("AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter.adoc")
     assert not [i for i in document.issues if i.severity == "error"]
-    assert {i.message for i in document.issues} == {
-        "table generation is not implemented yet",
-        "UML diagram generation is not implemented yet",
-    }
+    assert [i.message for i in document.issues] == ["UML diagram generation is not implemented yet"]
 
 
 def test_example_text_and_assets(exported):
@@ -49,3 +46,18 @@ def test_example_text_and_assets(exported):
 def test_reader_needs_asciidoc_submodel():
     with pytest.raises(ValueError, match="no submodel 'Nope'"):
         AasxDocumentReader(LIMIT).read(str(EXAMPLE), "Nope")
+
+
+def test_example_tables(exported):
+    document: RenderedDocument = exported[0]
+    assert document.text.count("\n// Table generated from ") == 25
+    table4 = document.text.split('id="Table_Submodel"', 1)[1].split("|===", 2)[1]
+    assert "NamurTechnicalDataVariableAreaFlowMeter" in table4
+    assert (
+        "supplementalSemanticId(s):  +\nhttps://admin-shell.io/idta/SubmodelTemplate/TechnicalData/2/0"
+        in table4
+    )
+    assert table4.count("[SMC]") + table4.count("[SML]") == 3
+    general = document.text.split('id="Table_GeneralInformation"', 1)[1].split("\n|===\n", 2)[1]
+    assert "legally valid designation of the natural or judicial person" in general
+    assert 'cols="15%,45%,30%,10%"' in document.text  # Table_ProductClassification columnWidths

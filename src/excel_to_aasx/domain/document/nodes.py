@@ -1,6 +1,9 @@
 """The AsciiDoc submodel as the export sees it."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
+
+from excel_to_aasx.domain.document.tables.model import Element
 
 FUNCTION_PREFIX = "http://admin-shell.io/aasx-package-explorer/functions/asciidoc/"
 SUBMODEL_SEMANTIC_ID = f"{FUNCTION_PREFIX[:-1]}/1/0"
@@ -27,6 +30,8 @@ class DocNode:
 class DocSource:
     submodel_id_short: str
     nodes: tuple[DocNode, ...]
+    # Every submodel of the package by id, for generated tables and diagrams.
+    models: Mapping[str, Element] = field(default_factory=dict)
 
 
 def asciidoc_function(semantic_id: str) -> str:

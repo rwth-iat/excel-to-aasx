@@ -11,16 +11,13 @@ from excel_to_aasx.domain.document.assets import (
     is_text_content_type,
     safe_file_name,
 )
+from excel_to_aasx.domain.document.generated import Generator
 from excel_to_aasx.domain.document.linearize import linearize
 from excel_to_aasx.domain.document.nodes import DocNode, DocSource
 from excel_to_aasx.domain.importing.result import Issue
 
 HEADINGS = {"heading1": "== ", "heading2": "=== ", "heading3": "==== ", "heading4": "===== "}
-GENERATED = {
-    "generate-tables": "table",
-    "generate-uml": "UML diagram",
-    "generate-enum-table": "enum table",
-}
+GENERATED = ("generate-tables", "generate-uml", "generate-enum-table")
 
 
 @dataclass
@@ -34,13 +31,16 @@ class RenderedDocument:
 def render_document(source: DocSource) -> RenderedDocument:
     document = RenderedDocument(f"{_friendly(source.submodel_id_short) or 'index'}.adoc")
     lines: list[str] = []
+    generator = Generator(source, document.issues)
     for node in list(linearize(source.nodes, document.issues)):
         if node.kind == "Blob" and node.function in ("textblock", "coverpage", *HEADINGS):
             _text_block(node, lines)
         elif node.kind in ("Blob", "File") and node.function == "imagefile":
             _asset(node, lines, document)
+        elif node.kind == "Blob" and node.function == "tablerecord":
+            generator.table_record(node)
         elif node.kind == "ReferenceElement" and node.function in GENERATED:
-            _not_generated_yet(node, lines, document)
+            lines.extend(generator.lines(node))
     document.text = "\n".join(lines) + "\n"
     return document
 
@@ -90,16 +90,6 @@ def _link_attributes(args: ExportArgs, title: str) -> str:
     if title:
         text += ',title="{}"'.format(title.replace('"', '\\"'))
     return text.strip(",")
-
-
-def _not_generated_yet(node: DocNode, lines: list[str], document: RenderedDocument) -> None:
-    what = GENERATED[node.function]
-    lines.extend(
-        ["", f"// {what} '{node.id_short}' from {'/'.join(node.reference)}: not generated yet", ""]
-    )
-    document.issues.append(
-        Issue("warning", node.id_short, f"{what} generation is not implemented yet")
-    )
 
 
 def _args(node: DocNode, document: RenderedDocument) -> ExportArgs:

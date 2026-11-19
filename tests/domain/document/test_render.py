@@ -72,10 +72,11 @@ def test_iterate_list_repeats_children_with_items():
         ),
     )  # fmt: skip
     doc = _render(loop)
-    assert doc.text == (
-        "\n=== One (first)\n\n// table 'Table_One' from sm/One: not generated yet\n\nc1\n"
-        "\n=== Two ()\n\n// table 'Table_Two' from sm/Two: not generated yet\n\nc2\n"
-    )
+    assert doc.text == "\n=== One (first)\nc1\n\n=== Two ()\nc2\n"
+    assert [i.message for i in doc.issues] == [
+        "table target not found: sm/One",
+        "table target not found: sm/Two",
+    ]
 
 
 def test_iterate_list_without_items_is_an_error():

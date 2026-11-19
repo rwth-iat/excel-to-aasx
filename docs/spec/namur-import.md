@@ -75,7 +75,7 @@ A block is 6 *top* rows followed by *body* rows.
 
 ## 6. Body rows → ConceptDescriptions
 
-1. **[PE]** The CD is handled *before* the element. If a CD with the row's semanticId already exists, it is reused and the row's CD columns are ignored (first row wins). In the example, 129 rows share 99 semanticIds. The id comparison ignores the `#NNN` version suffix only when the plugin option `MatchCdNoVersion` is set (default: exact match). We use exact match.
+1. **[PE]** The CD is handled *before* the element. If a CD with the row's semanticId already exists, it is reused and the row's CD columns are ignored (first row wins). In the example, 129 rows share 99 semanticIds. The comparison ignores versions when the plugin option `MatchCdNoVersion` is set. The class default is off, but the shipped `AasxPluginExportTable.options.json` turns it on, so we match without versions too (`domain/ids.py`, a port of `IriIrdiRemoveVersion`): `0173-1#02-AAO677#004` and `0173-1#02-AAO677#005` share one CD.
 2. **[PE]** A new CD gets id = semanticId, idShort = `CD.idShort` or, if empty, `SME.idShort`, and one IEC 61360 embedded data specification with preferredName, definition and unit.
 3. **[PE]** A row with an empty semanticId gets a generated id from the template `www.example.com/ids/cd/DDDD_DDDD_DDDD_DDDD`, used for both the element and the CD. **[ours]** The digits are derived from a hash of the submodel id and the element path, so repeated imports give the same ids. PE uses random digits.
 4. **[ours]** PE seeds every CD with a preferredName `en: ""` before adding the cells, which gives a duplicate `en` entry. We do not.

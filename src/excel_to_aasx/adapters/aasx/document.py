@@ -5,6 +5,7 @@ import zipfile
 import aas_core3_1.types as aas
 
 from excel_to_aasx.adapters.aasx.package import load_environment, read_part
+from excel_to_aasx.adapters.aasx.table_model import table_models
 from excel_to_aasx.domain.document.nodes import (
     SUBMODEL_SEMANTIC_ID,
     DocNode,
@@ -28,7 +29,7 @@ class AasxDocumentReader:
                 _node(element, package, self._max_part_bytes)
                 for element in chosen.submodel_elements or []
             )
-        return DocSource(chosen.id_short or "", nodes)
+        return DocSource(chosen.id_short or "", nodes, table_models(environment))
 
 
 def _pick(environment: aas.Environment, id_short: str | None) -> aas.Submodel:

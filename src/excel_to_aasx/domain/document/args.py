@@ -13,6 +13,7 @@ class ExportArgs:
     depth: int | None = None
     width: float | None = None
     no_description: bool = False
+    column_widths: tuple[float, ...] | None = None
     # itemsA, itemsB, ... for iterate-list, keyed by letter. The example PDF uses itemsC,
     # which the ported Package Explorer commit does not know yet; any letter is accepted.
     items: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -37,6 +38,9 @@ def parse_args(text: str) -> ExportArgs:
         depth=int(raw["depth"]) if raw.get("depth") is not None else None,
         width=float(raw["width"]) if raw.get("width") is not None else None,
         no_description=_bool(raw.get("noDescription")),
+        column_widths=tuple(float(w) for w in raw["columnWidths"])
+        if raw.get("columnWidths")
+        else None,
         items={
             key[-1]: tuple(str(x) for x in value or ())
             for key, value in raw.items()

@@ -29,6 +29,8 @@ class WebLimits:
     max_upload_bytes: int = 50 * 1024 * 1024
     max_document_bytes: int = 2 * 1024 * 1024
     parallel_builds: int = 2
+    parallel_uploads: int = 4
+    max_error_chars: int = 4000
 
 
 class Api:
@@ -37,6 +39,7 @@ class Api:
         self._workspaces = workspaces
         self._limits = limits
         self._builds = threading.BoundedSemaphore(limits.parallel_builds)
+        self._uploads = threading.BoundedSemaphore(limits.parallel_uploads)
 
     async def upload(self, file: UploadFile) -> JSONResponse:
         suffix = Path(file.filename or "").suffix.lower()
@@ -49,11 +52,16 @@ class Api:
             raise HTTPException(503, "too many open sessions, try again later") from error
         source = folder / f"upload{suffix}"
         source.write_bytes(data)
+        if not self._uploads.acquire(blocking=False):
+            self._workspaces.delete(workspace_id)
+            raise HTTPException(429, "the server is busy, try again in a few seconds")
         try:
             opened = await run_in_threadpool(self._services.open_upload, str(source), str(folder))
         except ValueError as error:
             self._workspaces.delete(workspace_id)
-            raise HTTPException(400, str(error)) from error
+            raise HTTPException(400, self._short(str(error))) from error
+        finally:
+            self._uploads.release()
         main = Path(opened.main_file)
         record = {"package": Path(opened.package).name, "main": main.name}
         (folder / "meta.json").write_text(json.dumps(record), encoding="utf-8")
@@ -94,7 +102,7 @@ class Api:
         try:
             path, messages = await run_in_threadpool(self._services.compile_pdf, str(main))
         except ValueError as error:
-            raise HTTPException(422, f"PDF build failed: {error}") from error
+            raise HTTPException(422, self._short(f"PDF build failed: {error}")) from error
         finally:
             self._builds.release()
         headers = {"X-Build-Messages": json.dumps(messages)[:2000]}
@@ -103,6 +111,11 @@ class Api:
     def close(self, workspace_id: str) -> Response:
         self._workspaces.delete(workspace_id)
         return Response(status_code=204)
+
+    def _short(self, message: str) -> str:
+        """Tool output can be long; keep its end, where the cause usually is."""
+        limit = self._limits.max_error_chars
+        return message if len(message) <= limit else "…" + message[-limit:]
 
     def _folder(self, workspace_id: str) -> Path:
         folder = self._workspaces.get(workspace_id)

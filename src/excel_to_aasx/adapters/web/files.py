@@ -24,7 +24,8 @@ def safe_child(folder: Path, name: str) -> Path | None:
     if not _NAME.fullmatch(name) or name.startswith("."):
         return None
     path = folder / name
-    if path.parent.resolve() != folder.resolve() or not path.is_file():
+    # The PDF container writes into this folder too; never follow a link out of it.
+    if path.is_symlink() or path.parent.resolve() != folder.resolve() or not path.is_file():
         return None
     return path
 
@@ -33,6 +34,10 @@ def zip_folder(folder: Path, skip_suffixes: tuple[str, ...] = ()) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(folder.iterdir()):
-            if path.is_file() and path.suffix.lower() not in skip_suffixes:
+            if (
+                path.is_file()
+                and not path.is_symlink()
+                and path.suffix.lower() not in skip_suffixes
+            ):
                 archive.write(path, path.name)
     return buffer.getvalue()

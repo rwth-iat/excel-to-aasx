@@ -20,7 +20,9 @@ class Workspaces:
         self._idle = idle_seconds
         self._max = max_count
         self._lock = threading.Lock()
-        root.mkdir(parents=True, exist_ok=True)
+        # Uploads are private: other local users must not read them.
+        root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        root.chmod(0o700)
 
     def create(self) -> tuple[str, Path]:
         with self._lock:
@@ -29,7 +31,7 @@ class Workspaces:
                 raise WorkspaceFull
             workspace_id = secrets.token_hex(16)
             folder = self._root / workspace_id
-            folder.mkdir()
+            folder.mkdir(mode=0o700)
             return workspace_id, folder
 
     def get(self, workspace_id: str) -> Path | None:

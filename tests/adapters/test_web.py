@@ -154,3 +154,45 @@ def test_pdf_failure_is_reported(tmp_path):
     workspace = _upload(client, EXAMPLE).json()["id"]
     response = client.post(f"/api/workspaces/{workspace}/pdf", content="= x")
     assert response.status_code == 422 and "boom" in response.json()["detail"]
+
+
+def test_body_limit_without_declared_length(tmp_path):
+    client, _ = _app(tmp_path, max_upload_bytes=1000)
+
+    def chunks():
+        yield (
+            b"--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.xlsx\"\r\n"
+            b"Content-Type: application/octet-stream\r\n\r\n"
+        )
+        for _ in range(100):
+            yield b"x" * 1000
+        yield b"\r\n--b--\r\n"
+
+    response = client.post(
+        "/api/workspaces",
+        content=chunks(),
+        headers={"content-type": "multipart/form-data; boundary=b"},
+    )
+    assert response.status_code == 413
+
+
+def test_symlinks_are_never_served_or_zipped(tmp_path):
+    client, workspaces = _app(tmp_path)
+    workspace = _upload(client, EXAMPLE).json()["id"]
+    folder = workspaces.get(workspace)
+    assert folder is not None
+    secret = tmp_path / "secret.txt"
+    secret.write_text("host secret")
+    (folder / "doc" / "leak.txt").symlink_to(secret)
+    assert client.get(f"/api/workspaces/{workspace}/files/leak.txt").status_code == 404
+    archive = zipfile.ZipFile(
+        io.BytesIO(client.get(f"/api/workspaces/{workspace}/document.zip").content)
+    )
+    assert "leak.txt" not in archive.namelist()
+
+
+def test_workspaces_are_private(tmp_path):
+    _, workspaces = _app(tmp_path)
+    workspace_id, folder = workspaces.create()
+    assert folder.stat().st_mode & 0o077 == 0
+    assert folder.parent.stat().st_mode & 0o077 == 0

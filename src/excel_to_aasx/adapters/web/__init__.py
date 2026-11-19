@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from excel_to_aasx.adapters.web.api import Api, WebLimits, WebServices
 from excel_to_aasx.adapters.web.headers import add_security_headers, csp_with_style_nonce
+from excel_to_aasx.adapters.web.limits import BodyLimit
 from excel_to_aasx.adapters.web.workspaces import Workspaces
 
 __all__ = ["WebLimits", "WebServices", "Workspaces", "create_app"]
@@ -22,6 +23,8 @@ STATIC = Path(__file__).parent / "static"
 def create_app(services: WebServices, workspaces: Workspaces, limits: WebLimits) -> FastAPI:
     app = FastAPI(title="excel-to-aasx", docs_url=None, redoc_url=None, openapi_url=None)
     add_security_headers(app)
+    # Multipart overhead on top of the largest upload.
+    app.add_middleware(BodyLimit, max_bytes=limits.max_upload_bytes + 64 * 1024)
     api = Api(services, workspaces, limits)
     base = "/api/workspaces"
     app.add_api_route("/", _index, methods=["GET"])

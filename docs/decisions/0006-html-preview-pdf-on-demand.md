@@ -10,7 +10,7 @@ The editor should feel like Overleaf: edit AsciiDoc on the left, see the result 
 
 ## Decision
 
-While typing, the browser renders the AsciiDoc to HTML with asciidoctor.js; the server does no work. A "Build PDF" button sends the current text to the server, which builds the exact PDF (ADR 0004) for checking and download. The HTML preview is shown in a sandboxed iframe with scripts disabled, because AsciiDoc can carry raw HTML.
+While typing, the browser renders the AsciiDoc to HTML with asciidoctor.js; the server does no work. A "Build PDF" button sends the current text to the server, which builds the exact PDF (ADR 0004) for checking and download. The HTML preview is shown in a sandboxed iframe with scripts disabled, because AsciiDoc can carry raw HTML. The iframe has `sandbox="allow-same-origin"` without `allow-scripts`: nothing in it can run (checked with an `onerror` handler in a passthrough block), and the page can replace its body in place, so the preview keeps its scroll position while typing. The preview renders with `env-pdf` set, so it shows the same `ifdef` branches as the PDF.
 
 ## Consequences
 

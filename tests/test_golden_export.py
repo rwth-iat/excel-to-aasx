@@ -1,5 +1,8 @@
 """Export the AsciiDoc submodel of the example package."""
 
+import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -13,6 +16,7 @@ from excel_to_aasx.domain.document.render import RenderedDocument
 from tests.adapters.test_aasx_reader import EXAMPLE, LIMIT
 from tests.adapters.test_pdf_compiler import IMAGE, needs_docker
 
+REFERENCE_PDF = EXAMPLE.with_name("AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter-1.pdf")
 PDF_LINE = (
     "The information in section `General` concerns about .. "
     "[One or two sentences explaining the section.]"
@@ -31,7 +35,11 @@ def test_example_exports_without_errors(exported):
     document, main_file = exported
     assert main_file.endswith("AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter.adoc")
     assert not [i for i in document.issues if i.severity == "error"]
-    assert [i.message for i in document.issues] == ["UML diagram generation is not implemented yet"]
+    assert document.issues == []
+    uml = document.text.split(
+        '[plantuml, UML_GeneralInformation, svg, id="UML_GeneralInformation"'
+    )[1]
+    assert 'class "GeneralInformation" as ID00000001 <<SMC>> {' in uml.split("@enduml")[0]
 
 
 def test_example_text_and_assets(exported):
@@ -77,4 +85,11 @@ def test_example_builds_a_39_page_pdf(tmp_path):
     data = Path(pdf).read_bytes()
     assert data.startswith(b"%PDF")
     assert b"/Count 39" in data
+    if shutil.which("pdftotext"):
+        assert _words(pdf) == _words(str(REFERENCE_PDF))
     assert not [i for i in document.issues if i.severity == "error"]
+
+
+def _words(pdf: str) -> list[str]:
+    text = subprocess.run(["pdftotext", pdf, "-"], capture_output=True, text=True, check=True)
+    return re.findall(r"\w+", text.stdout)

@@ -23,7 +23,7 @@ Ports the Package Explorer "Export SMT as AsciiDoc" function: `src/AasxPluginExp
 | `heading1`–`heading4` | Blob | A blank line, then `==` … `=====` plus the text. **[PE]** |
 | `imagefile` | Blob, File | The data as a file next to the document; unless `noLink`, a blank line, `image::<file>[id="<idShort>", <attrs>]` and a blank line. `attrs`: `width="<w:.1f>%"`, `title="<description>"`. **[PE]** |
 | `generate-tables` | ReferenceElement | A table of the referenced element's direct children, inlined after `// Table generated from <keys>` (section 5). **[PE]** |
-| `generate-uml` | ReferenceElement | **[ours, for now]** A comment and a warning. Step 3c. |
+| `generate-uml` | ReferenceElement | A PlantUML class diagram of the referenced element (port of `PlantUmlWriter`), options from `uml` in the args, `depth` levels deep: `[plantuml, <idShort>, svg, id="<idShort>", <attrs>]`. **[PE]** **[ours]** The PlantUML text is written inside the block; PE writes a `.puml` file and `include::`s it, which secure mode does not allow. |
 | `generate-enum-table` | ReferenceElement | **[ours, for now]** A comment and a warning. |
 | `tablerecord` | Blob | Nothing written. Its JSON replaces the table preset for all later tables. **[PE]** |
 | `target-model` | — | Nothing written. **[PE]** |
@@ -62,4 +62,4 @@ The package decides what lands in the output folder. The example ships `extended
 ## Check against the example
 
 
-`excel-to-aasx adoc examples/*.aasx -o out/doc` writes the document, its 25 tables and 18 files with no errors; the only warning is the UML diagram. For every table, the set of ECLASS IRDIs equals the one in the matching table of the example PDF, and CD definitions appear as in the PDF. 89 of 96 prose lines are found verbatim in the text of the example PDF; the other 7 differ only by rendering (cross-references become "Figure 2", citations, hyphenation).
+`excel-to-aasx adoc examples/*.aasx -o out/doc` writes the document, its 25 tables, the UML diagram and 18 files with no errors or warnings. `excel-to-aasx pdf` then builds a PDF whose text equals the example PDF word for word (9,110 words), and whose 39 pages match the example's pixel for pixel at 30 dpi (checked 2026-11-19). The golden test checks the word-for-word part when Docker and `pdftotext` are available. 89 of 96 prose lines are found verbatim in the text of the example PDF; the other 7 differ only by rendering (cross-references become "Figure 2", citations, hyphenation).

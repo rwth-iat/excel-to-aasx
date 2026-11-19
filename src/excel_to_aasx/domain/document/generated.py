@@ -1,15 +1,17 @@
-"""Parts generated from the target submodel: tables now; UML and enum tables later."""
+"""Parts generated from the target submodel: tables and UML; enum tables later."""
 
 import json
+import re
 
-from excel_to_aasx.domain.document.args import ExportArgs, parse_args
+from excel_to_aasx.domain.document.args import ExportArgs, link_attributes, parse_args
 from excel_to_aasx.domain.document.nodes import DocNode, DocSource
 from excel_to_aasx.domain.document.tables.model import resolve
 from excel_to_aasx.domain.document.tables.preset import SMT_ASCIIDOC_PRESET, TablePreset
 from excel_to_aasx.domain.document.tables.writer import TableRequest, write_table
+from excel_to_aasx.domain.document.uml import UmlOptions, plantuml
 from excel_to_aasx.domain.importing.result import Issue
 
-NOT_YET = {"generate-uml": "UML diagram", "generate-enum-table": "enum table"}
+NOT_YET = {"generate-enum-table": "enum table"}
 
 
 class Generator:
@@ -39,7 +41,24 @@ class Generator:
                 f"// {what} '{node.id_short}' from {'/'.join(node.reference)}: not generated yet",
                 "",
             ]
+        if node.function == "generate-uml":
+            return self._uml(node)
         return self._table(node)
+
+    def _uml(self, node: DocNode) -> list[str]:
+        """ExportSmt.ProcessUml. The PlantUML text is inlined: secure mode forbids include::."""
+        args = self._args(node)
+        located = resolve(self._source.models, node.reference)
+        if located is None:
+            self._issues.append(
+                Issue("error", node.id_short, f"UML target not found: {'/'.join(node.reference)}")
+            )
+            return []
+        depth = args.depth if args.depth is not None else 2**31 - 1
+        source = plantuml(located.element, depth, UmlOptions.from_args(args.raw.get("uml")))
+        name = re.sub(r"[^a-zA-Z0-9_]", "_", node.id_short)
+        header = f'[plantuml, {name}, svg, id="{name}", {link_attributes(args, node.title)}]'
+        return ["", header, "----", *source.rstrip("\n").split("\n"), "----", ""]
 
     def _table(self, node: DocNode) -> list[str]:
         args = self._args(node)

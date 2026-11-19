@@ -87,10 +87,17 @@ def test_iterate_list_without_items_is_an_error():
     assert doc.text == "\n" and [i.severity for i in doc.issues] == ["error"]
 
 
-def test_generated_parts_are_marked_until_implemented():
-    doc = _render(DocNode("ReferenceElement", "UML_X", "generate-uml", reference=("sm", "X")))
-    assert "// UML diagram 'UML_X' from sm/X: not generated yet" in doc.text
+def test_enum_tables_are_marked_until_implemented():
+    doc = _render(
+        DocNode("ReferenceElement", "Enum_X", "generate-enum-table", reference=("sm", "X"))
+    )
+    assert "// enum table 'Enum_X' from sm/X: not generated yet" in doc.text
     assert [i.severity for i in doc.issues] == ["warning"]
+
+
+def test_uml_target_must_exist():
+    doc = _render(DocNode("ReferenceElement", "UML_X", "generate-uml", reference=("sm", "X")))
+    assert [i.message for i in doc.issues] == ["UML target not found: sm/X"]
 
 
 def test_prefix_constant_matches_package_explorer():

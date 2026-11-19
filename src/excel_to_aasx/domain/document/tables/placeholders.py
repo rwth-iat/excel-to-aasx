@@ -13,7 +13,7 @@ from excel_to_aasx.domain.document.tables.packs import (
 
 CARDINALITY = "SMT/Cardinality"
 _CARDINALITY_TEXT = {"One": "1", "ZeroToOne": "0..1", "ZeroToMany": "0..*", "OneToMany": "1..*"}
-_ABBREVIATIONS = {
+ABBREVIATIONS = {
     "Submodel": "SM", "ConceptDescription": "CD", "Property": "Prop",
     "MultiLanguageProperty": "MLP", "Range": "Range", "Blob": "Blob", "File": "File",
     "ReferenceElement": "Ref", "RelationshipElement": "Rel",
@@ -65,9 +65,9 @@ def _referable(ph: Placeholders, head: str, rf: Element, parent: Element | None)
     ph.set(head + "idShort", _escape(rf.id_short))
     _lang_list(ph, head + "description", rf.description)
     ph.set(head + "elementName", rf.kind)
-    ph.set(head + "elementAbbreviation", _ABBREVIATIONS.get(rf.kind, ""))
+    ph.set(head + "elementAbbreviation", ABBREVIATIONS.get(rf.kind, ""))
     if rf.kind != "Submodel":
-        ph.set(head + "elementShort", _ABBREVIATIONS.get(rf.kind, ""))
+        ph.set(head + "elementShort", ABBREVIATIONS.get(rf.kind, ""))
     if parent is None:
         ph.set(head + "parent", "-")
     else:

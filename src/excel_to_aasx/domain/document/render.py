@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass, field
 
-from excel_to_aasx.domain.document.args import ExportArgs, parse_args
+from excel_to_aasx.domain.document.args import ExportArgs, link_attributes, parse_args
 from excel_to_aasx.domain.document.assets import (
     asset_name,
     blob_bytes,
@@ -78,18 +78,8 @@ def _asset(node: DocNode, lines: list[str], document: RenderedDocument) -> None:
             )
     document.assets[name] = data
     if not args.no_link:
-        attributes = _link_attributes(args, node.title)
+        attributes = link_attributes(args, node.title)
         lines.extend(["", f'image::{name}[id="{_friendly(node.id_short)}", {attributes}]', ""])
-
-
-def _link_attributes(args: ExportArgs, title: str) -> str:
-    """EvalLinkArguments."""
-    text = ""
-    if args.width is not None:
-        text += f',width="{args.width:.1f}%"'
-    if title:
-        text += ',title="{}"'.format(title.replace('"', '\\"'))
-    return text.strip(",")
 
 
 def _args(node: DocNode, document: RenderedDocument) -> ExportArgs:

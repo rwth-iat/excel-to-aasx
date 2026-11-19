@@ -42,6 +42,7 @@ class Element:
     value_id: Ref | None = None
     details: tuple[str, ...] = ()  # SML attributes as `name=value`
     concept: Concept | None = None
+    submodel_kind: str = ""  # "Template" or "Instance"; submodels only
     children: tuple["Element", ...] = field(default_factory=tuple)
 
 

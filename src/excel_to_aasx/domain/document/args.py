@@ -53,3 +53,13 @@ def parse_args(text: str) -> ExportArgs:
 def _bool(value: object) -> bool:
     # Newtonsoft turns the string "true" into a bool; the example writes it that way.
     return value is True or (isinstance(value, str) and value.strip().lower() == "true")
+
+
+def link_attributes(args: ExportArgs, title: str) -> str:
+    """EvalLinkArguments."""
+    text = ""
+    if args.width is not None:
+        text += f',width="{args.width:.1f}%"'
+    if title:
+        text += ',title="{}"'.format(title.replace('"', '\\"'))
+    return text.strip(",")

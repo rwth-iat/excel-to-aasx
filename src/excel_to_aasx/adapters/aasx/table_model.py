@@ -21,6 +21,7 @@ def table_models(environment: aas.Environment) -> dict[str, Element]:
             ),
             qualifiers=_qualifiers(submodel.qualifiers),
             concept=_lookup(concepts, submodel.semantic_id),
+            submodel_kind=submodel.kind.value if submodel.kind is not None else "",
             children=tuple(_element(e, concepts) for e in submodel.submodel_elements or []),
         )
         for submodel in environment.submodels or []
@@ -31,6 +32,8 @@ def _element(element: aas.SubmodelElement, concepts: dict[str, Concept]) -> Elem
     children: list[aas.SubmodelElement] = []
     if isinstance(element, aas.SubmodelElementCollection | aas.SubmodelElementList):
         children = list(element.value or [])
+    if isinstance(element, aas.Entity):
+        children = list(element.statements or [])
     value_id = (
         element.value_id if isinstance(element, aas.Property | aas.MultiLanguageProperty) else None
     )

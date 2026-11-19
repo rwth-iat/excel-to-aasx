@@ -28,13 +28,15 @@ JS
 mkdir -p "$OUT"
 npx --no-install esbuild entry.js --bundle --format=esm --minify --legal-comments=eof \
   --outfile="$OUT/codemirror.js"
-cp node_modules/@asciidoctor/core/dist/browser/asciidoctor.min.js "$OUT/asciidoctor.min.js"
+# The 3.x browser build is an ES module (export default); minify it as one.
+npx --no-install esbuild node_modules/@asciidoctor/core/dist/browser/asciidoctor.js --format=esm --minify \
+  --legal-comments=eof --outfile="$OUT/asciidoctor.js"
 cp node_modules/@asciidoctor/core/LICENSE "$OUT/asciidoctor.LICENSE"
 cp node_modules/codemirror/LICENSE "$OUT/codemirror.LICENSE"
 
 cat > "$OUT/VERSIONS.txt" <<TXT
 Built by tools/vendor.sh. Do not edit by hand.
 codemirror $CODEMIRROR (@codemirror/state $CM_STATE), bundled with esbuild $ESBUILD
-@asciidoctor/core $ASCIIDOCTOR (dist/browser/asciidoctor.min.js)
+@asciidoctor/core $ASCIIDOCTOR (dist/browser/asciidoctor.js, minified with esbuild $ESBUILD)
 TXT
 ls -la "$OUT"

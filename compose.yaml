@@ -1,0 +1,39 @@
+# docker compose up -d --build
+# The app listens on 127.0.0.1:8000. Put a reverse proxy with HTTPS (and request rate limits)
+# in front of it before exposing it publicly; see docs/deployment.md.
+services:
+  app:
+    build: .
+    ports: ["127.0.0.1:${APP_PORT:-8000}:8000"]
+    environment:
+      EXCEL_TO_AASX_BUILDER_URL: http://builder:8080
+    volumes: [workspaces:/data/workspaces]
+    networks: [public, builds]
+    depends_on:
+      builder: { condition: service_healthy }
+    read_only: true
+    tmpfs: ["/tmp:size=256m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    pids_limit: 256
+    restart: unless-stopped
+
+  builder:
+    build: { context: ., dockerfile: builder/Dockerfile }
+    networks: [builds]          # internal only: no internet, not reachable from outside
+    read_only: true
+    tmpfs: ["/tmp:size=1g"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2g
+    pids_limit: 512
+    cpus: 2
+    restart: unless-stopped
+
+networks:
+  public: {}
+  builds: { internal: true }
+
+volumes:
+  workspaces: {}

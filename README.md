@@ -40,4 +40,5 @@ workbook cannot be read. `diff` exits 1 when differences were found.
 
 - Import rules: [`docs/spec/namur-import.md`](docs/spec/namur-import.md)
 - AsciiDoc export rules: [`docs/spec/asciidoc-export.md`](docs/spec/asciidoc-export.md)
+- Deployment: [`docs/deployment.md`](docs/deployment.md)
 - Decisions: [`docs/decisions/`](docs/decisions/)

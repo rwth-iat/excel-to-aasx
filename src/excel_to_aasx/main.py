@@ -14,6 +14,7 @@ from excel_to_aasx.adapters.aasx.document_submodel import AasxDocumentEditor
 from excel_to_aasx.adapters.excel import ExcelSheetReader
 from excel_to_aasx.adapters.files import FolderDocumentWriter
 from excel_to_aasx.adapters.pdf import DockerPdfCompiler
+from excel_to_aasx.adapters.pdf.remote import RemotePdfCompiler
 from excel_to_aasx.adapters.templates import load_frame
 from excel_to_aasx.adapters.web import WebLimits, WebServices, Workspaces, create_app
 from excel_to_aasx.app.add_document import add_document, has_document
@@ -46,12 +47,12 @@ def main() -> int:
         build_pdf,
         AasxDocumentReader(MAX_PACKAGE_PART_BYTES),
         FolderDocumentWriter(),
-        DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS),
+        _pdf_compiler(),
     )
     editor = AasxDocumentEditor(MAX_PACKAGE_PART_BYTES)
     add = partial(_add_document, editor)
     opener = partial(open_upload, import_, add, partial(has_document, editor), export)
-    compiler = DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS)
+    compiler = _pdf_compiler()
     web = WebServices(open_upload=opener, compile_pdf=compiler.compile)
     serve = partial(_serve, web)
     return cli.run(
@@ -63,6 +64,13 @@ def main() -> int:
         add_document=add,
         serve=serve,
     )
+
+
+def _pdf_compiler() -> DockerPdfCompiler | RemotePdfCompiler:
+    """The builder service when configured (ADR 0009), else a local container per build."""
+    if url := os.environ.get("EXCEL_TO_AASX_BUILDER_URL"):
+        return RemotePdfCompiler(url, PDF_TIMEOUT_SECONDS)
+    return DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS)
 
 
 def _serve(services: WebServices, host: str, port: int) -> None:

@@ -21,6 +21,7 @@ uv run excel-to-aasx pdf examples/*.aasx -o out/pdf           # ... plus PDF (ne
 docker pull asciidoctor/docker-asciidoctor:1.108.1            # once; tests that need it skip without it
 uv run excel-to-aasx serve --port 8000                        # web app (ADR 0005-0007)
 tools/vendor.sh                                               # rebuild vendored JS (needs npm)
+docker compose up -d --build                                  # app + builder, see docs/deployment.md
 ```
 
 ## Reference material (`examples/`)

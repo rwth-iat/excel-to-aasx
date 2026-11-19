@@ -161,7 +161,7 @@ def test_body_limit_without_declared_length(tmp_path):
 
     def chunks():
         yield (
-            b"--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.xlsx\"\r\n"
+            b'--b\r\nContent-Disposition: form-data; name="file"; filename="a.xlsx"\r\n'
             b"Content-Type: application/octet-stream\r\n\r\n"
         )
         for _ in range(100):

@@ -1,0 +1,39 @@
+[project]
+name = "excel-to-aasx"
+version = "0.1.0"
+description = "Convert vendor Excel property sheets into AASX packages (AAS metamodel V3.1)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aas-core3.1>=1.0,<2",
+    "defusedxml>=0.7,<1",
+    "openpyxl>=3.1,<4",
+]
+
+[project.scripts]
+excel-to-aasx = "excel_to_aasx.main:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "pyright>=1.1.380", "types-defusedxml>=0.7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "S"]
+ignore = ["S101"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -95,6 +95,7 @@ A block is 6 *top* rows followed by *body* rows.
 - `SME.elementName` unknown. **Error**, row skipped.
 - The full output is run through `aas_core3_1.verification`; findings are reported, not fixed. idShort findings are left out there, since the line above already reports them by element path.
 
-## Open questions
+## 9. Language strings
 
-1. `Explanation:` and other lang-string cells: PE splits on `(.*?)@(\w+)`, so plain text with an `@` (an email address) is split wrongly. We reproduce that for now (see `test_parse_lang_strings`). Should we?
+1. **[ours]** Cells holding several languages (`Explanation:`): `text@xx` is text in language `xx` only when `xx` looks like a language tag (`en`, `deu`, `de-DE`) and is followed by a space or the end of the cell. Text without a marker is `en`; text after the last marker is `en` too.
+2. PE treats every `@word` as a marker (`(.*?)@(\w+)`), so `support@krohne.com` became a language `krohne` with text `support`, which fails metamodel verification. No cell in the example workbook contains an `@`, so the outputs do not differ there.

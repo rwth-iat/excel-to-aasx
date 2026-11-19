@@ -21,6 +21,7 @@ Deliberate differences from the C# code (details in the spec):
 - No CD preferred-name entry with an empty text for the default language (the C# context seeds one).
 - An unknown `SME.elementName` or a duplicate idShort among siblings is an error that skips the row (PE skips silently or imports the duplicate). Invalid idShorts and near-miss value types (`xs:Boolean`) are imported as PE does, with a warning.
 - The output is a complete package (AAS, submodel, CDs) with stable ids; PE imports into an existing package.
+- An `@` counts as a language marker only before a language tag at the end of a word, so email addresses stay text.
 
 ## Consequences
 

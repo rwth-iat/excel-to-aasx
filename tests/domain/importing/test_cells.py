@@ -64,7 +64,12 @@ def test_parse_lang_strings():
     assert parse_lang_strings("") == []
     assert parse_lang_strings("plain text") == [("en", "plain text")]
     assert parse_lang_strings("Hallo@de Hello@en") == [("de", "Hallo"), ("en", "Hello")]
-    assert parse_lang_strings("mail me@example.com") == [("example", "mail me"), ("en", ".com")]
+    assert parse_lang_strings("Hallo@de-DE") == [("de-DE", "Hallo")]
+    assert parse_lang_strings("Questions: support@krohne.com") == [
+        ("en", "Questions: support@krohne.com")
+    ]
+    assert parse_lang_strings("Mail a@b.de@de Mail@en") == [("de", "Mail a@b.de"), ("en", "Mail")]
+    assert parse_lang_strings("Hallo@de and more") == [("de", "Hallo"), ("en", "and more")]
 
 
 def test_is_valid_id_short():

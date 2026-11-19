@@ -114,18 +114,21 @@ def parse_cardinality(text: str) -> str:
     return _CARDINALITY.get(text.strip(), "One")
 
 
+# `text@de`: a language tag only when it ends the word. PE splits at every `@`, which
+# turns `support@krohne.com` into a language "krohne".
+_LANGUAGE_MARKER = re.compile(r"@([a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*)(?=\s|$)")
+
+
 def parse_lang_strings(text: str) -> list[LangText]:
-    """ExtendLangStringSet.Parse: `text@en text@de`; text without `@` is the default language."""
+    """`Hallo@de Hello@en` -> de, en. Text without a marker is the default language."""
     result: list[LangText] = []
-    rest = text
-    while "@" in rest:
-        found = re.search(r"(.*?)@(\w+)", rest, re.DOTALL)
-        if not found:
-            break
-        result.append((found.group(2), found.group(1).strip()))
-        rest = rest[found.end() :]
+    start = 0
+    for marker in _LANGUAGE_MARKER.finditer(text):
+        result.append((marker.group(1), text[start : marker.start()].strip()))
+        start = marker.end()
+    rest = text[start:] if result else text
     if rest.strip():
-        result.append((DEFAULT_LANGUAGE, rest))
+        result.append((DEFAULT_LANGUAGE, rest.strip() if result else rest))
     return result
 
 

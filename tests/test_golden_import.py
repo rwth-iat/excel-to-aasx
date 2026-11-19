@@ -19,6 +19,7 @@ def _run(*argv: str) -> tuple[int, str]:
         list(argv),
         compare=partial(compare_packages, AasxPackageReader(LIMIT)),
         import_=partial(import_workbook, ExcelSheetReader(LIMIT), AasxPackageWriter()),
+        export=_unused,
         out=out,
     )
     return code, out.getvalue()
@@ -51,3 +52,7 @@ def test_output_has_only_known_metamodel_findings(tmp_path):
 def _spec_xml(path) -> bytes:
     with zipfile.ZipFile(path) as package:
         return next(package.read(n) for n in package.namelist() if n.endswith(".aas.xml"))
+
+
+def _unused(*_args):
+    raise AssertionError("not expected")

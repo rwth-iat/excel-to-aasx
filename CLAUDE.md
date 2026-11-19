@@ -7,7 +7,7 @@ Planned later:
 2. A web editor, similar to Overleaf: edit the AsciiDoc, see a live PDF preview.
 
 Past decisions: `docs/decisions/`. Stack (ADR 0001): Python ≥ 3.12, `uv`, `aas-core3.1` for the AAS model, `openpyxl`, `defusedxml`.
-Import rules: `docs/spec/namur-import.md` is the contract (ADR 0002). Code follows it; change the spec first.
+Import rules: `docs/spec/namur-import.md` is the contract (ADR 0002). AsciiDoc export rules: `docs/spec/asciidoc-export.md`. Code follows the specs; change the spec first.
 
 ```bash
 uv sync                                    # install, including dev tools
@@ -15,6 +15,7 @@ uv run pytest -q                           # tests
 uv run pyright                             # types
 uv run excel-to-aasx import examples/*.xlsx -o out/import.aasx
 uv run excel-to-aasx diff out/import.aasx examples/*.aasx   # superset check (ADR 0003)
+uv run excel-to-aasx adoc examples/*.aasx -o out/doc          # AsciiDoc submodel -> folder
 ```
 
 ## Reference material (`examples/`)
@@ -36,7 +37,8 @@ These outrank every other consideration, including "it's just a quick test". The
 1. **Never extract an uploaded ZIP with `extractall`.** AASX and XLSX are ZIPs from untrusted users (zip slip, zip bombs). Read members by name, check resolved path and size.
 2. **Never call a process through a shell** (`shell=True`). Pass argument lists.
 3. **Asciidoctor never runs in `unsafe` mode.** Edited AsciiDoc is untrusted: `include::` and `image::` must not read server files.
-4. **Uploaded files are untrusted input**, every value inside them too (cell values, idShorts, descriptions, semanticIds, embedded files). Parse XML without external entities. Escape values before they go into AsciiDoc.
+4. **Never load or run code that came from a package.** The example AASX ships `extended.rb`, `.bat` and `.ps1` files, and the Package Explorer compile command loads `-r ./extended.rb`. Compile only with our own extensions and theme.
+5. **Uploaded files are untrusted input**, every value inside them too (cell values, idShorts, descriptions, semanticIds, embedded files). Parse XML without external entities. Escape values before they go into AsciiDoc.
 
 ## Layers — imports point inward only
 

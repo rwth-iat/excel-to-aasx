@@ -76,3 +76,14 @@ def _member(package: zipfile.ZipFile, part: str, max_part_bytes: int) -> zipfile
     if info.file_size > max_part_bytes:
         raise ValueError(f"package part {part} is {info.file_size} bytes, limit {max_part_bytes}")
     return info
+
+
+def read_part(package: zipfile.ZipFile, part: str, max_part_bytes: int) -> bytes | None:
+    """A package file by its AAS path (`/aasx/files/x.png`); None if absent or outside."""
+    name = posixpath.normpath(part.strip()).lstrip("/")
+    if not name or name.startswith("..") or "://" in part:
+        return None
+    try:
+        return package.read(_member(package, name, max_part_bytes))
+    except ValueError:
+        return None

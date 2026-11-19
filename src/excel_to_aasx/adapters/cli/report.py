@@ -1,7 +1,8 @@
 from collections import Counter
 from typing import TextIO
 
-from excel_to_aasx.domain.importing.result import ImportResult
+from excel_to_aasx.domain.document.render import RenderedDocument
+from excel_to_aasx.domain.importing.result import ImportResult, Issue
 from excel_to_aasx.domain.report import ComparisonReport
 
 
@@ -13,7 +14,21 @@ def print_import(result: ImportResult, target: str, out: TextIO) -> None:
         f"{counts['error']} error(s), {counts['warning']} warning(s)",
         file=out,
     )
-    for issue in sorted(result.issues, key=lambda i: i.severity != "error"):
+    _print_issues(result.issues, out)
+
+
+def print_export(document: RenderedDocument, main_file: str, out: TextIO) -> None:
+    counts = Counter(issue.severity for issue in document.issues)
+    print(
+        f"wrote {main_file} and {len(document.assets)} file(s); "
+        f"{counts['error']} error(s), {counts['warning']} warning(s)",
+        file=out,
+    )
+    _print_issues(document.issues, out)
+
+
+def _print_issues(issues: list[Issue], out: TextIO) -> None:
+    for issue in sorted(issues, key=lambda i: i.severity != "error"):
         print(f"  {issue.severity:7} {issue.location}: {issue.message}", file=out)
 
 

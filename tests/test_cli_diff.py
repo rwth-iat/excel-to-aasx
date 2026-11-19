@@ -13,7 +13,9 @@ NAMES = {"en": "manufacturer article number", "de": "Herstellerartikelnummer"}
 def _diff(*args: str) -> tuple[int, str]:
     out = io.StringIO()
     compare = partial(compare_packages, AasxPackageReader(LIMIT))
-    return cli.run(["diff", *args], compare=compare, import_=_no_import, out=out), out.getvalue()
+    return cli.run(
+        ["diff", *args], compare=compare, import_=_no_import, export=_no_import, out=out
+    ), out.getvalue()
 
 
 def _general(*children):

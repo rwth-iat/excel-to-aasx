@@ -28,6 +28,10 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "S"]
 ignore = ["S101"]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests run fixed commands (docker, pdftotext) to check the real tools.
+"tests/**" = ["S603", "S607"]
+
 [tool.pyright]
 include = ["src", "tests"]
 pythonVersion = "3.12"
@@ -37,3 +41,7 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/excel_to_aasx"]
+artifacts = ["src/excel_to_aasx/adapters/pdf/extensions/*.rb"]

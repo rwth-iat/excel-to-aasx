@@ -20,6 +20,7 @@ def run(
     compare: CompareFn,
     import_: ImportFn,
     export: ExportFn,
+    pdf: ExportFn,
     out: TextIO = sys.stdout,
 ) -> int:
     args = _parser().parse_args(argv)
@@ -28,8 +29,9 @@ def run(
             result = import_(args.workbook, args.output, args.submodel_id)
             print_import(result, args.output, out)
             return 1 if result.has_errors else 0
-        if args.command == "adoc":
-            document, main_file = export(args.package, args.output, args.submodel)
+        if args.command in ("adoc", "pdf"):
+            build = export if args.command == "adoc" else pdf
+            document, main_file = build(args.package, args.output, args.submodel)
             print_export(document, main_file, out)
             return 1 if any(i.severity == "error" for i in document.issues) else 0
         mount = Mount(args.submodel, args.mount) if args.submodel else None
@@ -54,6 +56,13 @@ def _parser() -> argparse.ArgumentParser:
     adoc.add_argument("package", help="AASX with a Package Explorer AsciiDoc submodel")
     adoc.add_argument("-o", "--output", required=True, help="folder for the .adoc and its files")
     adoc.add_argument(
+        "--submodel", help="idShort of the AsciiDoc submodel (default: by semanticId)"
+    )
+
+    pdf_cmd = commands.add_parser("pdf", help="export the AsciiDoc submodel and build the PDF")
+    pdf_cmd.add_argument("package", help="AASX with a Package Explorer AsciiDoc submodel")
+    pdf_cmd.add_argument("-o", "--output", required=True, help="folder for .adoc, files and PDF")
+    pdf_cmd.add_argument(
         "--submodel", help="idShort of the AsciiDoc submodel (default: by semanticId)"
     )
 

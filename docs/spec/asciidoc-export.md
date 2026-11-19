@@ -49,9 +49,15 @@ Port of `ExportTableProcessor.ExportAsciiDoc` and `ItemProcessor` (`domain/docum
 6. **[ours]** Only `depth: 1` is supported (all 25 tables of the example use it). Other depths write depth 1 and give a warning; Package Explorer would add a table per nested container.
 7. **[ours]** Values from the package go into table cells with only `|` escaped, as in Package Explorer. AsciiDoc markup in a value (for example `pass:[...]`) is interpreted when the document is compiled. Compile in secure mode (CLAUDE.md hard rules).
 
-## 6. Untrusted content in the output
+## 6. PDF build (ADR 0004)
 
-The package decides what lands in the output folder. The example ships `extended.rb` (Ruby), `.bat` and `.ps1` scripts, and the Package Explorer compile command loads `-r ./extended.rb`. Exporting only writes these files. Anything that compiles the document (step 4, the web editor) must never load or run code from the package. See the hard rules in `CLAUDE.md`.
+1. **[PE]** `asciidoctor-pdf -r asciidoctor-diagram -a toc=macro -a pdf-theme=my-theme.yml -a env-pdf` in `asciidoctor/docker-asciidoctor`. The theme option is left out when the package has no `my-theme.yml`.
+2. **[ours]** Our own `numbered_paragraphs.rb` replaces the package's `-r ./extended.rb` (the same upstream example). Secure mode, no network, read-only container, limits and a timeout.
+3. **[ours]** asciidoctor's messages are reported as warnings. The example gives two "cannot fit formatted text" messages; the reference PDF lacks the same two paragraph numbers, so Package Explorer's build hit them too.
+
+## 7. Untrusted content in the output
+
+The package decides what lands in the output folder. The example ships `extended.rb` (Ruby), `.bat` and `.ps1` scripts, and the Package Explorer compile command loads `-r ./extended.rb`. Exporting only writes these files. The PDF build (section 6) never loads or runs code from the package. See the hard rules in `CLAUDE.md`.
 
 ## Check against the example
 

@@ -1,12 +1,17 @@
 """Export the AsciiDoc submodel of the example package."""
 
+from pathlib import Path
+
 import pytest
 
 from excel_to_aasx.adapters.aasx.document import AasxDocumentReader
 from excel_to_aasx.adapters.files import FolderDocumentWriter
+from excel_to_aasx.adapters.pdf import DockerPdfCompiler
+from excel_to_aasx.app.build_pdf import build_pdf
 from excel_to_aasx.app.export_document import export_document
 from excel_to_aasx.domain.document.render import RenderedDocument
 from tests.adapters.test_aasx_reader import EXAMPLE, LIMIT
+from tests.adapters.test_pdf_compiler import IMAGE, needs_docker
 
 PDF_LINE = (
     "The information in section `General` concerns about .. "
@@ -61,3 +66,15 @@ def test_example_tables(exported):
     general = document.text.split('id="Table_GeneralInformation"', 1)[1].split("\n|===\n", 2)[1]
     assert "legally valid designation of the natural or judicial person" in general
     assert 'cols="15%,45%,30%,10%"' in document.text  # Table_ProductClassification columnWidths
+
+
+@needs_docker
+def test_example_builds_a_39_page_pdf(tmp_path):
+    document, pdf = build_pdf(
+        AasxDocumentReader(LIMIT), FolderDocumentWriter(), DockerPdfCompiler(IMAGE, 300),
+        str(EXAMPLE), str(tmp_path), None,
+    )  # fmt: skip
+    data = Path(pdf).read_bytes()
+    assert data.startswith(b"%PDF")
+    assert b"/Count 39" in data
+    assert not [i for i in document.issues if i.severity == "error"]

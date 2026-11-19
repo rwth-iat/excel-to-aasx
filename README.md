@@ -13,7 +13,12 @@ uv sync
 uv run excel-to-aasx import examples/Import_Properties_Schwebe_2_added_Li_v09_HOMI_Gerd-1.xlsx -o out/import.aasx
 uv run excel-to-aasx diff out/import.aasx "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx"
 uv run excel-to-aasx adoc "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/doc
+uv run excel-to-aasx pdf "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/pdf
 ```
+
+`pdf` needs Docker and the image `asciidoctor/docker-asciidoctor:1.108.1`
+(`docker pull asciidoctor/docker-asciidoctor:1.108.1`). The build runs in a locked-down
+container in secure mode; see `docs/decisions/0004-pdf-build-in-locked-down-docker.md`.
 
 `import` exits 1 when rows were skipped because of errors (the AASX is still written), 2 when the
 workbook cannot be read. `diff` exits 1 when differences were found.

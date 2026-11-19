@@ -20,6 +20,7 @@ def _run(*argv: str) -> tuple[int, str]:
         compare=partial(compare_packages, AasxPackageReader(LIMIT)),
         import_=partial(import_workbook, ExcelSheetReader(LIMIT), AasxPackageWriter()),
         export=_unused,
+        pdf=_unused,
         out=out,
     )
     return code, out.getvalue()

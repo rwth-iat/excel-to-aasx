@@ -12,6 +12,7 @@ Planned: AASX to AsciiDoc rendering, and a web editor with live PDF preview.
 uv sync
 uv run excel-to-aasx import examples/Import_Properties_Schwebe_2_added_Li_v09_HOMI_Gerd-1.xlsx -o out/import.aasx
 uv run excel-to-aasx diff out/import.aasx "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx"
+uv run excel-to-aasx add-document out/import.aasx -o out/with-doc.aasx   # IDTA starter document
 uv run excel-to-aasx adoc "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/doc
 uv run excel-to-aasx pdf "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/pdf
 ```

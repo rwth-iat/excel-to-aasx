@@ -1,14 +1,18 @@
 """Composition root: the only place that constructs adapters."""
 
+import datetime
 import sys
 from functools import partial
 
 from excel_to_aasx.adapters import cli
 from excel_to_aasx.adapters.aasx import AasxPackageReader, AasxPackageWriter
 from excel_to_aasx.adapters.aasx.document import AasxDocumentReader
+from excel_to_aasx.adapters.aasx.document_submodel import AasxDocumentEditor
 from excel_to_aasx.adapters.excel import ExcelSheetReader
 from excel_to_aasx.adapters.files import FolderDocumentWriter
 from excel_to_aasx.adapters.pdf import DockerPdfCompiler
+from excel_to_aasx.adapters.templates import load_frame
+from excel_to_aasx.app.add_document import add_document
 from excel_to_aasx.app.build_pdf import build_pdf
 from excel_to_aasx.app.compare_packages import compare_packages
 from excel_to_aasx.app.export_document import export_document
@@ -37,7 +41,16 @@ def main() -> int:
         FolderDocumentWriter(),
         DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS),
     )
-    return cli.run(sys.argv[1:], compare=compare, import_=import_, export=export, pdf=pdf)
+    add = partial(_add_document, AasxDocumentEditor(MAX_PACKAGE_PART_BYTES))
+    return cli.run(
+        sys.argv[1:], compare=compare, import_=import_, export=export, pdf=pdf, add_document=add
+    )
+
+
+def _add_document(
+    editor: AasxDocumentEditor, source: str, target: str, submodel: str | None
+) -> str:
+    return add_document(editor, load_frame, source, target, submodel, datetime.date.today())
 
 
 if __name__ == "__main__":

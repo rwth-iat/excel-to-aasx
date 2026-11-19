@@ -6,6 +6,7 @@ read is capped in size. XML goes through defusedxml.
 
 import posixpath
 import zipfile
+from pathlib import Path
 from xml.etree.ElementTree import Element
 
 import aas_core3_1.types as aas
@@ -42,6 +43,28 @@ def load_environment(path: str, max_part_bytes: int) -> aas.Environment:
         raise ValueError(f"{path}: {error.strerror or error}") from error
     except aas_xml.DeserializationException as error:
         raise ValueError(f"{path}: invalid AAS XML at {error.path}: {error.cause}") from error
+
+
+def replace_environment(
+    source: str, target: str, environment: aas.Environment, max_part_bytes: int
+) -> None:
+    """Write `source` to `target` with a new AAS spec part; every other part is copied as is."""
+    if Path(source).resolve() == Path(target).resolve():
+        raise ValueError("target must differ from the source package")
+    try:
+        with zipfile.ZipFile(source) as package:
+            spec_part = _find_spec_part(package, max_part_bytes)
+            with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as out:
+                for info in package.infolist():
+                    if info.filename == spec_part:
+                        xml = '<?xml version="1.0" encoding="utf-8"?>' + aas_xml.to_str(environment)
+                        out.writestr(info.filename, xml)
+                    else:
+                        out.writestr(
+                            info, package.read(_member(package, info.filename, max_part_bytes))
+                        )
+    except zipfile.BadZipFile as error:
+        raise ValueError(f"{source}: not a ZIP/AASX package") from error
 
 
 def _find_spec_part(package: zipfile.ZipFile, max_part_bytes: int) -> str:

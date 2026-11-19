@@ -59,7 +59,21 @@ Port of `ExportTableProcessor.ExportAsciiDoc` and `ItemProcessor` (`domain/docum
 
 The package decides what lands in the output folder. The example ships `extended.rb` (Ruby), `.bat` and `.ps1` scripts, and the Package Explorer compile command loads `-r ./extended.rb`. Exporting only writes these files. The PDF build (section 6) never loads or runs code from the package. See the hard rules in `CLAUDE.md`.
 
+## 8. Starter document (`add-document`, ADR 0008)
+
+All **[ours]**; Package Explorer has no generator.
+
+1. The package must not have an AsciiDoc submodel yet. With several data submodels, `--submodel` picks one.
+2. The new submodel `AsciiDoc_<idShort>` holds, in order: `Fixed_content` (the template's theme, CSS, fonts and cover graphics as `imagefile` blobs with `noLink`), the cover page, the front matter (Imprint, Version history, General chapters), the generated chapter, and the back matter (Annex A, change log, Bibliography). The template is `adapters/templates/idta/frame.adoc`, split at `//@part` lines; `{{number}}`, `{{title}}`, `{{idShort}}`, `{{date}}`, `{{month}}` are filled.
+3. The generated chapter "Submodel <idShort>" has an Approach section with a UML overview (`depth: 2`, no initial values, no association names), the submodel table, and one section per collection or list with children, in pre-order, each in its own collection (idShorts must be unique among siblings). Placeholders are paragraphs starting with `*TODO:*`; `[...]` cannot be used, AsciiDoc reads a leading `[...]` line as attributes.
+4. Values from the workbook (the idShort) go into the text without line breaks and with `{` escaped.
+5. ASCII-only blobs of non-text types (SVG) are stored base64-encoded, the way Package Explorer expects (section 4.1); binary and text blobs are stored as they are.
+6. The rest of the package is copied part by part; only the AAS XML is replaced, and the AAS that references the data submodel also references the new one.
+
 ## Check against the example
+
+Example workbook → `import` → `add-document` → `pdf` gives a 31-page IDTA-style PDF with 20 tables and the UML overview, without errors.
+
 
 
 `excel-to-aasx adoc examples/*.aasx -o out/doc` writes the document, its 25 tables, the UML diagram and 18 files with no errors or warnings. `excel-to-aasx pdf` then builds a PDF whose text equals the example PDF word for word (9,110 words), and whose 39 pages match the example's pixel for pixel at 30 dpi (checked 2026-11-19). The golden test checks the word-for-word part when Docker and `pdftotext` are available. 89 of 96 prose lines are found verbatim in the text of the example PDF; the other 7 differ only by rendering (cross-references become "Figure 2", citations, hyphenation).

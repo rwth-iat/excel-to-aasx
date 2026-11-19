@@ -19,6 +19,7 @@ def _diff(*args: str) -> tuple[int, str]:
         import_=_no_import,
         export=_no_import,
         pdf=_no_import,
+        add_document=_no_import,
         out=out,
     ), out.getvalue()
 

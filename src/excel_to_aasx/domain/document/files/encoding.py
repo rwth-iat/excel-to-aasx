@@ -2,7 +2,6 @@
 
 import base64
 import binascii
-import re
 
 _TEXT_TYPES = (
     "text/plain", "text/xml", "text/html", "text/markdown", "text/asciidoc",
@@ -30,25 +29,15 @@ def blob_bytes(value: bytes, content_type: str) -> bytes:
         return value
 
 
+def blob_value(data: bytes, content_type: str) -> bytes:
+    """Inverse of `blob_bytes`: what to store so Package Explorer reads `data` back."""
+    if is_text_content_type(content_type) or any(b >= 128 for b in data):
+        return data
+    return base64.b64encode(data)
+
+
 def guess_extension(data: bytes) -> str:
     for extension, signatures in _SIGNATURES:
         if any(data.startswith(signature) for signature in signatures):
             return extension
     return ".png"  # PE's fallback
-
-
-def asset_name(id_short: str, extension: str) -> str:
-    """`my-theme_dot_yml` -> `my-theme.yml`; otherwise idShort plus the guessed extension."""
-    name = re.sub(r"[^a-zA-Z0-9_-]", "_", id_short)
-    position = name.lower().rfind("_dot_")
-    if position >= 0:
-        extension = "." + name[position + len("_dot_") :]
-        name = name[:position]
-    return name + extension
-
-
-def safe_file_name(name: str) -> str:
-    """A name from untrusted args must stay inside the output folder."""
-    base = name.replace("\\", "/").rsplit("/", 1)[-1]
-    cleaned = re.sub(r"[^a-zA-Z0-9_.-]", "_", base).lstrip(".")
-    return cleaned or "asset"

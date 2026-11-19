@@ -15,6 +15,7 @@ uv run pytest -q                           # tests
 uv run pyright                             # types
 uv run excel-to-aasx import examples/*.xlsx -o out/import.aasx
 uv run excel-to-aasx diff out/import.aasx examples/*.aasx   # superset check (ADR 0003)
+uv run excel-to-aasx add-document out/import.aasx -o out/doc.aasx   # IDTA starter document (ADR 0008)
 uv run excel-to-aasx adoc examples/*.aasx -o out/doc          # AsciiDoc submodel -> folder
 uv run excel-to-aasx pdf examples/*.aasx -o out/pdf           # ... plus PDF (needs Docker, ADR 0004)
 docker pull asciidoctor/docker-asciidoctor:1.108.1            # once; tests that need it skip without it

@@ -3,12 +3,8 @@ import base64
 import pytest
 
 from excel_to_aasx.domain.document.args import parse_args
-from excel_to_aasx.domain.document.assets import (
-    asset_name,
-    blob_bytes,
-    guess_extension,
-    safe_file_name,
-)
+from excel_to_aasx.domain.document.files.encoding import blob_bytes, guess_extension
+from excel_to_aasx.domain.document.files.names import asset_name, safe_file_name
 from excel_to_aasx.domain.document.nodes import asciidoc_function
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8

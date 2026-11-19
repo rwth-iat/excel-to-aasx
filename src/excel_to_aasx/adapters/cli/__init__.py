@@ -13,6 +13,7 @@ from excel_to_aasx.domain.report import ComparisonReport, Mount
 CompareFn = Callable[[str, str, Mount | None], ComparisonReport]
 ImportFn = Callable[[str, str, str | None], ImportResult]
 ExportFn = Callable[[str, str, str | None], tuple[RenderedDocument, str]]
+AddDocumentFn = Callable[[str, str, str | None], str]
 
 
 def run(
@@ -21,6 +22,7 @@ def run(
     import_: ImportFn,
     export: ExportFn,
     pdf: ExportFn,
+    add_document: AddDocumentFn,
     out: TextIO = sys.stdout,
 ) -> int:
     args = _parser().parse_args(argv)
@@ -29,6 +31,10 @@ def run(
             result = import_(args.workbook, args.output, args.submodel_id)
             print_import(result, args.output, out)
             return 1 if result.has_errors else 0
+        if args.command == "add-document":
+            id_short = add_document(args.package, args.output, args.submodel)
+            print(f"wrote {args.output}: added AsciiDoc submodel {id_short}", file=out)
+            return 0
         if args.command in ("adoc", "pdf"):
             build = export if args.command == "adoc" else pdf
             document, main_file = build(args.package, args.output, args.submodel)
@@ -51,6 +57,11 @@ def _parser() -> argparse.ArgumentParser:
     imp.add_argument("workbook", help=".xlsx in the 'Import NAMUR SMTs' layout")
     imp.add_argument("-o", "--output", required=True, help="AASX file to write")
     imp.add_argument("--submodel-id", help="submodel id (default: derived, stable)")
+
+    add = commands.add_parser("add-document", help="add an IDTA starter document (ADR 0008)")
+    add.add_argument("package", help="AASX with the data submodel, e.g. from `import`")
+    add.add_argument("-o", "--output", required=True, help="AASX file to write")
+    add.add_argument("--submodel", help="idShort of the data submodel, if there are several")
 
     adoc = commands.add_parser("adoc", help="export the AsciiDoc submodel of an AASX")
     adoc.add_argument("package", help="AASX with a Package Explorer AsciiDoc submodel")

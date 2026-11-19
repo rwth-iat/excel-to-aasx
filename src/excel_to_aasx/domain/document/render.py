@@ -4,13 +4,12 @@ import re
 from dataclasses import dataclass, field
 
 from excel_to_aasx.domain.document.args import ExportArgs, link_attributes, parse_args
-from excel_to_aasx.domain.document.assets import (
-    asset_name,
+from excel_to_aasx.domain.document.files.encoding import (
     blob_bytes,
     guess_extension,
     is_text_content_type,
-    safe_file_name,
 )
+from excel_to_aasx.domain.document.files.names import asset_name, safe_file_name
 from excel_to_aasx.domain.document.generated import Generator
 from excel_to_aasx.domain.document.linearize import linearize
 from excel_to_aasx.domain.document.nodes import DocNode, DocSource

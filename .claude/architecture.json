@@ -1,0 +1,95 @@
+{
+  "note": "Single source of truth for the layer rules. Consumed by .claude/hooks/brick_check.py and the /brick-check command. Change limits HERE, nowhere else. Regexes deliberately use [x] character classes instead of backslash escapes so they survive JSON encoding unambiguously.",
+
+  "layers": [
+    {
+      "path": "src/excel_to_aasx/domain",
+      "role": "Pure conversion rules: rows as the converter sees them, column/row-to-SubmodelElement mapping, idShort rules, document outline. No I/O.",
+      "mayImport": ["src/excel_to_aasx/domain"],
+      "pure": true
+    },
+    {
+      "path": "src/excel_to_aasx/ports",
+      "role": "Protocols only. No implementations, no logic.",
+      "mayImport": ["src/excel_to_aasx/domain", "src/excel_to_aasx/ports"],
+      "pure": true
+    },
+    {
+      "path": "src/excel_to_aasx/app",
+      "role": "Use-cases: convert a workbook to an AASX, render an AASX to AsciiDoc, compile AsciiDoc to PDF. Orchestrates domain through ports.",
+      "mayImport": ["src/excel_to_aasx/domain", "src/excel_to_aasx/ports", "src/excel_to_aasx/app"]
+    },
+    {
+      "path": "src/excel_to_aasx/adapters",
+      "role": "Everything that touches the outside world. One sub-package per concern (excel, aasx, asciidoc, pdf, web, cli).",
+      "mayImport": ["src/excel_to_aasx/domain", "src/excel_to_aasx/ports", "src/excel_to_aasx/adapters"],
+      "noSiblingAdapters": true
+    },
+    {
+      "path": "src/excel_to_aasx/config",
+      "role": "Settings (upload limits, Asciidoctor binary/theme, paths), read and validated once at startup.",
+      "mayImport": ["src/excel_to_aasx/domain", "src/excel_to_aasx/config"]
+    },
+    {
+      "path": "src/excel_to_aasx/main.py",
+      "role": "Composition root. The ONLY module allowed to construct adapters and wire them to use-cases.",
+      "mayImport": ["*"]
+    },
+    {
+      "path": "tests",
+      "role": "Tests may import anything.",
+      "mayImport": ["*"]
+    }
+  ],
+
+  "pureLayerIoModules": [
+    "asyncio", "http", "io", "logging", "os", "pathlib", "shutil", "socket", "sqlite3",
+    "subprocess", "tempfile", "time", "urllib", "zipfile"
+  ],
+  "pureLayerNote": "A pure layer may import the standard library except the I/O modules above, plus its allowed layers. Any third-party package (openpyxl, basyx, lxml, ...) is I/O or a technology choice and belongs behind a port.",
+
+  "budgets": {
+    "fileLocSoft": 200,
+    "fileLocHard": 300,
+    "functionLoc": 40,
+    "exportsPerModule": 5,
+    "filesPerDir": 8,
+    "functionLocExemptPaths": ["tests"],
+    "exportsExemptPaths": ["tests"],
+    "exportsExemptNote": "Every test function is a public name; the exports budget measures a module's API surface, which test modules do not have.",
+    "functionLocExemptNote": "The function-length budget detects a sequence of unnamed steps hiding inside one function. A test class groups many small independent cases; splitting it would scatter related tests for no gain. Security rules, layering and file size still apply to tests."
+  },
+
+  "forbidden": [
+    {
+      "id": "zip-extractall",
+      "pattern": "[.]extractall[(]",
+      "severity": "block",
+      "reason": "AASX packages are untrusted ZIPs. extractall follows ../ and absolute member names (zip slip) and has no size cap (zip bomb). Read members by name through the AASX adapter, or extract one member at a time after validating its resolved path and size."
+    },
+    {
+      "id": "shell-true",
+      "pattern": "shell[ ]*=[ ]*True",
+      "severity": "block",
+      "reason": "User-edited AsciiDoc and uploaded filenames reach the Asciidoctor call. Pass an argument list, never a shell string."
+    },
+    {
+      "id": "unsafe-asciidoctor",
+      "pattern": "(safe[-_a-zA-Z]*|-S)[^a-zA-Z0-9]{0,8}unsafe|SafeMode[.]UNSAFE|:safe[ ]*=>[ ]*:unsafe",
+      "severity": "block",
+      "reason": "AsciiDoc from the web editor is untrusted. UNSAFE mode lets include:: read any server file and lets docinfo/scripts run. Use secure mode; whitelist what the template needs."
+    }
+  ],
+
+  "escapeHatch": {
+    "marker": "arch-allow:",
+    "note": "Append `# arch-allow: <written reason>` to the offending line to override a blocking rule. The written reason is required and shows up in review."
+  },
+
+  "scan": {
+    "includeDirs": ["src", "tests"],
+    "extensions": [".py"],
+    "excludeSuffixes": [],
+    "excludeDirs": ["__pycache__", ".venv", "build", "dist", ".ruff_cache", "out"]
+  }
+}

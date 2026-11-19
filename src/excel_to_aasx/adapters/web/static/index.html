@@ -13,6 +13,7 @@
     <span class="brand">excel-to-aasx</span>
     <span class="tagline">Excel → AASX → AsciiDoc → PDF</span>
     <nav id="actions" class="actions" hidden>
+      <button id="new-file" class="button" type="button">New file</button>
       <a id="download-aasx" class="button" download>Download AASX</a>
       <a id="download-zip" class="button" download>Download AsciiDoc (.zip)</a>
       <button id="build-pdf" class="button primary" type="button">Build PDF</button>
@@ -49,6 +50,7 @@
         <div class="pane-head tabs" role="tablist">
           <button id="tab-html" class="tab active" type="button" role="tab">Preview</button>
           <button id="tab-pdf" class="tab" type="button" role="tab" disabled>PDF</button>
+          <label class="muted sync"><input id="sync" type="checkbox" checked> follow editor</label>
           <span class="muted hint">The preview approximates the PDF; diagrams, theme and page layout appear only in the PDF.</span>
         </div>
         <iframe id="preview" class="preview" sandbox="allow-same-origin" title="HTML preview"></iframe>

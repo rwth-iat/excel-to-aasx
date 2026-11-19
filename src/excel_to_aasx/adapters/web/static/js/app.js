@@ -1,6 +1,6 @@
 import { basicSetup, EditorView } from "/static/vendor/codemirror.js";
 import * as api from "./api.js";
-import { renderPreview } from "./preview.js";
+import { renderPreview, syncPreview } from "./preview.js";
 
 const $ = (id) => document.getElementById(id);
 let workspace = null;
@@ -32,9 +32,23 @@ function listIssues(issues) {
   $("issues").hidden = issues.length === 0;
 }
 
+const cursorLine = () => editor.state.doc.lineAt(editor.state.selection.main.head).number;
+
+function follow(line) {
+  if ($("sync").checked && !$("preview").hidden) syncPreview($("preview"), line);
+}
+
+function topLine() {
+  const block = editor.lineBlockAtHeight(editor.scrollDOM.scrollTop);
+  return editor.state.doc.lineAt(block.from).number;
+}
+
 function onEdit() {
   clearTimeout(previewTimer);
-  previewTimer = setTimeout(() => renderPreview($("preview"), text(), api.filesUrl(workspace)), 300);
+  previewTimer = setTimeout(async () => {
+    await renderPreview($("preview"), text(), api.filesUrl(workspace));
+    follow(cursorLine());
+  }, 300);
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => api.saveDocument(workspace, text()).catch((e) => setStatus(e.message)), 1500);
 }
@@ -56,10 +70,14 @@ function openWorkspace(result) {
       basicSetup,
       EditorView.cspNonce.of(document.querySelector('meta[name="csp-nonce"]').content),
       EditorView.lineWrapping,
-      EditorView.updateListener.of((u) => u.docChanged && onEdit()),
+      EditorView.updateListener.of((u) => {
+        if (u.docChanged) onEdit();
+        else if (u.selectionSet) follow(cursorLine());
+      }),
     ],
     parent: $("editor"),
   });
+  editor.scrollDOM.addEventListener("scroll", () => follow(topLine()), { passive: true });
   renderPreview($("preview"), result.document.text, api.filesUrl(workspace));
 }
 
@@ -114,5 +132,23 @@ $("drop").addEventListener("drop", (e) => {
   handleFile(e.dataTransfer.files[0]);
 });
 $("build-pdf").addEventListener("click", buildPdf);
+
+// Two clicks instead of a dialog: the session and unsaved edits are discarded.
+let confirmTimer = null;
+$("new-file").addEventListener("click", async () => {
+  const button = $("new-file");
+  if (!button.classList.contains("confirm")) {
+    button.classList.add("confirm");
+    button.textContent = "Click again to discard";
+    confirmTimer = setTimeout(() => {
+      button.classList.remove("confirm");
+      button.textContent = "New file";
+    }, 4000);
+    return;
+  }
+  clearTimeout(confirmTimer);
+  await api.closeWorkspace(workspace).catch(() => {});
+  location.reload();
+});
 $("tab-html").addEventListener("click", () => showTab("html"));
 $("tab-pdf").addEventListener("click", () => showTab("pdf"));

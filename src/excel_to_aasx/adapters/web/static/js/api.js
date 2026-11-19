@@ -33,6 +33,10 @@ export async function buildPdf(id, text) {
   return { pdf: await response.blob(), messages };
 }
 
+export async function closeWorkspace(id) {
+  await fetch(base(id), { method: "DELETE" });
+}
+
 export const packageUrl = (id) => `${base(id)}/package.aasx`;
 export const zipUrl = (id) => `${base(id)}/document.zip`;
 export const filesUrl = (id) => `${base(id)}/files`;

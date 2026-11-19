@@ -61,6 +61,8 @@ body { margin: 0; height: 100vh; display: flex; flex-direction: column; }
 .pane-head { display: flex; gap: .5rem; align-items: center; padding: .4rem .8rem; border-bottom: 1px solid var(--line); font-size: .85rem; font-weight: 600; }
 .muted { color: var(--muted); font-weight: 400; }
 .hint { margin-left: auto; font-size: .75rem; }
+.sync { font-size: .8rem; display: flex; align-items: center; gap: .25rem; }
+.button.confirm { background: #fff3; border-color: #fff; }
 .tab { border: 0; background: none; font: inherit; font-weight: 600; color: var(--muted); padding: .2rem .4rem; cursor: pointer; border-bottom: 2px solid transparent; }
 .tab.active { color: var(--idta-blue); border-bottom-color: var(--idta-blue); }
 .tab:disabled { cursor: default; opacity: .4; }

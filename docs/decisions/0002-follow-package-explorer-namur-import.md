@@ -10,6 +10,8 @@ The workbook README says: import it in the AASX Package Explorer with "Import ta
 
 That preset has **11** columns. The example workbook has **13**: it adds `SME.displayName@en` and `SME.displayName@de`. Also, the C# matcher for SME fields has no language-tag handling (`displayName@en` would not match), so the 13-column version needs C# changes that are not published. We infer how those two columns behave; we cannot read it.
 
+Update 2026-11-19: our import of the example workbook matches the example package on all 129 elements and 99 concepts (type, semanticId, cardinality, value type, displayName, CD idShort, names, definitions, unit). That confirms the two displayName columns. It does not exercise rows without a semanticId, SML blocks, or the hierarchy lookup's alias path.
+
 ## Decision
 
 The import reproduces the behaviour of `ImportPopulateByTable` and `ImportCellMatcher` at that commit, with the 13-column layout of the example workbook. Every rule, and every place we knowingly differ, is written down in `docs/spec/namur-import.md`. The spec is the contract; code follows it.
@@ -17,7 +19,8 @@ The import reproduces the behaviour of `ImportPopulateByTable` and `ImportCellMa
 Deliberate differences from the C# code (details in the spec):
 - Deterministic ConceptDescription ids instead of random ones when a row has no semanticId.
 - No CD preferred-name entry with an empty text for the default language (the C# context seeds one).
-- Hard errors for an unknown `SME.elementName` and for invalid idShorts are reported, not skipped silently.
+- An unknown `SME.elementName` or a duplicate idShort among siblings is an error that skips the row (PE skips silently or imports the duplicate). Invalid idShorts and near-miss value types (`xs:Boolean`) are imported as PE does, with a warning.
+- The output is a complete package (AAS, submodel, CDs) with stable ids; PE imports into an existing package.
 
 ## Consequences
 

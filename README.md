@@ -10,8 +10,12 @@ Planned: AASX to AsciiDoc rendering, and a web editor with live PDF preview.
 
 ```bash
 uv sync
-uv run excel-to-aasx --help
+uv run excel-to-aasx import examples/Import_Properties_Schwebe_2_added_Li_v09_HOMI_Gerd-1.xlsx -o out/import.aasx
+uv run excel-to-aasx diff out/import.aasx "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx"
 ```
+
+`import` exits 1 when rows were skipped because of errors (the AASX is still written), 2 when the
+workbook cannot be read. `diff` exits 1 when differences were found.
 
 ## Docs
 

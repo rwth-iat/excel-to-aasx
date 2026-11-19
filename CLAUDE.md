@@ -13,7 +13,8 @@ Import rules: `docs/spec/namur-import.md` is the contract (ADR 0002). Code follo
 uv sync                                    # install, including dev tools
 uv run pytest -q                           # tests
 uv run pyright                             # types
-uv run excel-to-aasx diff OURS.aasx examples/*.aasx   # superset check (ADR 0003)
+uv run excel-to-aasx import examples/*.xlsx -o out/import.aasx
+uv run excel-to-aasx diff out/import.aasx examples/*.aasx   # superset check (ADR 0003)
 ```
 
 ## Reference material (`examples/`)

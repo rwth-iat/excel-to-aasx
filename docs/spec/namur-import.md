@@ -7,7 +7,7 @@ The contract for the Excel → AASX import (ADR 0002). Source of truth for behav
 - `src/AasxPluginExportTable/Table/ImportCellMatcher.cs` (cell → field)
 - `src/AasxPluginExportTable/Table/ImportTableExcelProvider.cs` (cell access)
 
-Rules marked **[PE]** reproduce the C# code. Rules marked **[ours]** differ on purpose. Rules marked **[guess]** cover the 13-column layout, which has no published C# code yet.
+Rules marked **[PE]** reproduce the C# code. Rules marked **[ours]** differ on purpose. Rules marked **[example]** cover the 13-column layout, which has no published C# code; they were inferred and then confirmed against the example package (all 129 rows match).
 
 ## 1. Workbook
 
@@ -39,8 +39,8 @@ A block is 6 *top* rows followed by *body* rows.
 |---|---|---|
 | A | `SME.idShort` | element idShort |
 | B | `SME.semanticId` | element semanticId, and the id of its ConceptDescription |
-| C | `SME.displayName@en` | **[guess]** element displayName, language `en` |
-| D | `SME.displayName@de` | **[guess]** element displayName, language `de` |
+| C | `SME.displayName@en` | **[example]** element displayName, language `en` |
+| D | `SME.displayName@de` | **[example]** element displayName, language `de` |
 | E | `CD.idShort` | CD idShort |
 | F, G | `CD.preferredName@en`, `@de` | CD IEC 61360 preferredName |
 | H, I | `CD.definition@en`, `@de` | CD IEC 61360 definition |
@@ -69,6 +69,9 @@ A block is 6 *top* rows followed by *body* rows.
 5. **[ours]** An unparseable valueType that looks like a near miss (`xs: date`, `xs:Boolean`) is still `xs:string` (as in PE), but reported as a warning.
 6. **[ours]** Property, File and MLP get no value (PE writes `""`, and for MLP a language string `en: ""`, which fails metamodel verification).
 7. **[PE]** semanticId: one key, type `GlobalReference`, value = cell text, reference type `ExternalReference`.
+8. **[PE]** A list (`SML`) gets `typeValueListElement = SubmodelElement`.
+9. **[ours]** `BasicEventElement` is rejected (error): it needs data the sheet does not have.
+10. **[ours]** Empty display-name cells add no entry (PE would add an empty text, which fails verification).
 
 ## 6. Body rows → ConceptDescriptions
 
@@ -77,16 +80,21 @@ A block is 6 *top* rows followed by *body* rows.
 3. **[PE]** A row with an empty semanticId gets a generated id from the template `www.example.com/ids/cd/DDDD_DDDD_DDDD_DDDD`, used for both the element and the CD. **[ours]** The digits are derived from a hash of the submodel id and the element path, so repeated imports give the same ids. PE uses random digits.
 4. **[ours]** PE seeds every CD with a preferredName `en: ""` before adding the cells, which gives a duplicate `en` entry. We do not.
 5. **[ours]** PE creates the CD even when the element row then fails (unknown `SME.elementName`), leaving an orphan CD. We report the row as an error and create neither.
+6. **[ours]** Empty preferredName/definition cells add no entry; an empty unit is left out. IEC 61360 requires a preferredName, so a CD with none gets `en: <CD idShort>`.
 
-## 7. Validation (all **[ours]**, warnings unless noted)
+## 7. Package (all **[ours]**; PE imports into a package that already exists)
+
+1. The package holds one AAS, one submodel (kind `Template`) and the CDs. The AAS gets ids from the templates `www.example.com/ids/aas/…` and `…/asset/…`, derived from the submodel id; asset kind `Type`.
+2. Submodel id: `--submodel-id`, or derived from the template `www.example.com/ids/sm/DDDD_DDDD_DDDD_DDDD` and the submodel's semanticId and idShort, so the same workbook always gives the same id.
+3. The AAS XML goes to `aasx/<idShort>/<idShort>.aas.xml`, linked through `aasx-origin` like Package Explorer packages.
+
+## 8. Validation (all **[ours]**, warnings unless noted)
 
 - idShort not matching `^[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9_]+$` (the example has `installation instructions`, `pressure drop`, `type of output`). Imported as is, like PE; the AASX then fails verification.
 - idShort not unique among siblings. **Error.**
 - `SME.elementName` unknown. **Error**, row skipped.
-- The full output is run through `aas_core3_1.verification`; findings are reported, not fixed.
+- The full output is run through `aas_core3_1.verification`; findings are reported, not fixed. idShort findings are left out there, since the line above already reports them by element path.
 
 ## Open questions
 
-1. Columns C/D: is `SME.displayName@xx` really the element's displayName? Needs a raw 13-column import from the Package Explorer.
-2. `Explanation:` → description: PE parses `text@lang` pairs (`(.*?)@(\w+)`), and text without `@` becomes `en`. A cell with an `@` in plain text (an email address) is split wrongly. Do we reproduce that?
-3. The target submodel's id: PE imports into an existing submodel. We need a rule for creating one (proposal: the CLI takes `--submodel-id`, default derived from the semanticId).
+1. `Explanation:` and other lang-string cells: PE splits on `(.*?)@(\w+)`, so plain text with an `@` (an email address) is split wrongly. We reproduce that for now (see `test_parse_lang_strings`). Should we?

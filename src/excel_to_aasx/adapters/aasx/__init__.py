@@ -1,6 +1,9 @@
 from excel_to_aasx.adapters.aasx.package import load_environment
 from excel_to_aasx.adapters.aasx.snapshot import snapshot_of
+from excel_to_aasx.adapters.aasx.writer import AasxPackageWriter
 from excel_to_aasx.domain.snapshot import PackageSnapshot
+
+__all__ = ["AasxPackageReader", "AasxPackageWriter"]
 
 
 class AasxPackageReader:

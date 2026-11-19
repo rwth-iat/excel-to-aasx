@@ -5,26 +5,41 @@ import sys
 from collections.abc import Callable, Sequence
 from typing import TextIO
 
+from excel_to_aasx.adapters.cli.report import print_comparison, print_import
+from excel_to_aasx.domain.importing.result import ImportResult
 from excel_to_aasx.domain.report import ComparisonReport, Mount
 
 CompareFn = Callable[[str, str, Mount | None], ComparisonReport]
+ImportFn = Callable[[str, str, str | None], ImportResult]
 
 
-def run(argv: Sequence[str], compare: CompareFn, out: TextIO = sys.stdout) -> int:
+def run(
+    argv: Sequence[str], compare: CompareFn, import_: ImportFn, out: TextIO = sys.stdout
+) -> int:
     args = _parser().parse_args(argv)
-    mount = Mount(args.submodel, args.mount) if args.submodel else None
     try:
+        if args.command == "import":
+            result = import_(args.workbook, args.output, args.submodel_id)
+            print_import(result, args.output, out)
+            return 1 if result.has_errors else 0
+        mount = Mount(args.submodel, args.mount) if args.submodel else None
         report = compare(args.expected, args.reference, mount)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
-    _print_report(report, out)
+    print_comparison(report, out)
     return 1 if report.differences else 0
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="excel-to-aasx")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    imp = commands.add_parser("import", help="convert a NAMUR SMT import workbook to AASX")
+    imp.add_argument("workbook", help=".xlsx in the 'Import NAMUR SMTs' layout")
+    imp.add_argument("-o", "--output", required=True, help="AASX file to write")
+    imp.add_argument("--submodel-id", help="submodel id (default: derived, stable)")
+
     diff = commands.add_parser(
         "diff", help="check that REFERENCE contains every element and concept of EXPECTED"
     )
@@ -35,15 +50,3 @@ def _parser() -> argparse.ArgumentParser:
         "--mount", default="", help="container path inside --submodel, e.g. A/B (default: root)"
     )
     return parser
-
-
-def _print_report(report: ComparisonReport, out: TextIO) -> None:
-    where = f"{report.mount.submodel}/{report.mount.path}".rstrip("/")
-    print(
-        f"reference mount: {where}\n"
-        f"checked {report.elements_checked} elements, {report.concepts_checked} concepts: "
-        f"{len(report.differences)} difference(s)",
-        file=out,
-    )
-    for diff in report.differences:
-        print(f"  {diff.path}  {diff.field}: {diff.expected!r} != {diff.actual!r}", file=out)

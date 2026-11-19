@@ -13,7 +13,7 @@ NAMES = {"en": "manufacturer article number", "de": "Herstellerartikelnummer"}
 def _diff(*args: str) -> tuple[int, str]:
     out = io.StringIO()
     compare = partial(compare_packages, AasxPackageReader(LIMIT))
-    return cli.run(["diff", *args], compare=compare, out=out), out.getvalue()
+    return cli.run(["diff", *args], compare=compare, import_=_no_import, out=out), out.getvalue()
 
 
 def _general(*children):
@@ -56,3 +56,6 @@ def test_explicit_mount_and_bad_input(tmp_path):
     assert code == 1 and "General  missing" in out
     assert _diff(path, str(tmp_path / "missing.aasx"))[0] == 2
 
+
+def _no_import(*_args):
+    raise AssertionError("import not expected")

@@ -1,15 +1,15 @@
 # 0003. Test against the example AASX as a superset, not for equality
 
-- **Status:** provisional — pending verification
+- **Status:** provisional — pending verification. The automated test against the example was removed by ADR 0010; the superset check remains in the `diff` command and its tests.
 - **Date:** 2026-11-19
-- **Relates to:** ADR 0002, `examples/`, the `diff` CLI command
+- **Relates to:** ADR 0002, ADR 0010 (the reference files are local only, not in git), `examples/`, the `diff` CLI command
 
 ## Context
 
 The example pair is not "input and raw output". Checked on 2026-11-19:
 
 - The AASX has two submodels. One holds the AsciiDoc spec document (`.../functions/asciidoc/1/0`). The other, `NamurTechnicalDataVariableAreaFlowMeter`, holds the data.
-- The data submodel has 149 elements; the workbook defines 129 rows. Extra elements were added (e.g. `GeneralInformation` with a `CompanyLogo` file), values are filled in (e.g. `ManufacturerName = KROHNE`), and the submodel was renamed (workbook: `NAMUR_SMT_FloatTypeFowMeter`).
+- The data submodel has 149 elements; the workbook defines 129 rows. Extra elements were added (e.g. `GeneralInformation` with a `CompanyLogo` file), values are filled in (e.g. `ManufacturerName` holds the vendor name), and the submodel was renamed (workbook: `NAMUR_SMT_FloatTypeFowMeter`).
 - The imported tree sits below `TechnicalPropertyAreas/ECLASS_ADV_V17/`, not at the submodel root.
 - All 98 distinct workbook idShorts and all 99 distinct semanticIds (ignoring the `#NNN` version suffix) do occur in it.
 

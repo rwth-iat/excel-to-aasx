@@ -13,7 +13,7 @@ def _tree() -> Element:
         "SubmodelElementCollection",
         "General",
         children=(
-            Element("Property", "Name", value_type="xs:string", value_text="KROHNE"),
+            Element("Property", "Name", value_type="xs:string", value_text="ACME"),
             images,
         ),
     )
@@ -22,7 +22,7 @@ def _tree() -> Element:
 def test_classes_features_and_associations():
     text = plantuml(_tree(), 5, UmlOptions())
     assert text.startswith("@startuml\n!theme plain\nleft to right direction\n")
-    assert 'class "General" as ID00000001 <<SMC>> {\n  +Name : xs:string = "KROHNE"\n' in text
+    assert 'class "General" as ID00000001 <<SMC>> {\n  +Name : xs:string = "ACME"\n' in text
     assert "  +ProductImages : SML [0..1]\n}" in text
     assert 'class "[00] " as ID00000003 <<SMC>> {\n  +ImageFile : File\n}' in text
     assert 'ID00000002 *--  ID00000003 : "[00] "' in text
@@ -35,7 +35,7 @@ def test_options_limit_suppress_and_names():
         limit_initial_value=0, suppress=("productimages",), no_association_names=True
     )
     text = plantuml(_tree(), 5, options)
-    assert '= "KROHNE"' not in text
+    assert '= "ACME"' not in text
     assert 'class "ProductImages"' not in text
     assert 'class "[00] "' in text  # children of a suppressed class are still drawn, as in PE
 

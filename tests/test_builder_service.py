@@ -1,0 +1,155 @@
+"""The builder service (builder/server.py) without asciidoctor: checks and wire format."""
+
+import importlib.util
+import io
+import json
+import threading
+import zipfile
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+
+import pytest
+
+from excel_to_aasx.adapters.pdf.diagram import JAVA_ARGS, PLANTUML_JAR, RemoteDiagramRenderer
+from excel_to_aasx.adapters.pdf.remote import RemotePdfCompiler
+
+SPEC = importlib.util.spec_from_file_location(
+    "builder_server", Path(__file__).parents[1] / "builder" / "server.py"
+)
+assert SPEC and SPEC.loader
+server = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(server)
+
+
+def _zip(files: dict[str, bytes]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, data in files.items():
+            archive.writestr(name, data)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize(
+    "name", ["../evil.adoc", "/abs.adoc", "sub/dir.adoc", ".hidden", "a b.adoc"]
+)
+def test_unpack_rejects_paths_and_odd_names(tmp_path, name):
+    with pytest.raises(server.BuildError, match="invalid file name"):
+        server.unpack(_zip({name: b"x"}), tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_unpack_limits(tmp_path, monkeypatch):
+    monkeypatch.setattr(server, "MAX_FILES", 2)
+    with pytest.raises(server.BuildError, match="more than 2 files"):
+        server.unpack(_zip({"a": b"", "b": b"", "c": b""}), tmp_path)
+    monkeypatch.setattr(server, "MAX_UNPACKED_BYTES", 10)
+    with pytest.raises(server.BuildError, match="too large"):
+        server.unpack(_zip({"a": b"x" * 11}), tmp_path)
+    with pytest.raises(server.BuildError, match="not a ZIP"):
+        server.unpack(b"nope", tmp_path)
+
+
+def test_theme_fonts_are_relocated(tmp_path):
+    (tmp_path / "my-theme.yml").write_text("normal: /documents/DejaVuSansMono.ttf\n")
+    server._relocate_theme(tmp_path)
+    assert (tmp_path / "my-theme.yml").read_text() == f"normal: {tmp_path}/DejaVuSansMono.ttf\n"
+
+
+def test_command_is_secure_and_uses_our_extension(tmp_path):
+    args = server.command(tmp_path, "doc.adoc")
+    assert args[:3] == ["asciidoctor-pdf", "--safe-mode", "secure"]
+    assert server.EXTENSION in args and "pdf-theme=my-theme.yml" not in " ".join(args)
+
+
+def test_build_rejects_bad_main_names():
+    for main in ("", "x.txt", "../a.adoc"):
+        with pytest.raises(server.BuildError, match="X-Main-File"):
+            server.build(_zip({"a.adoc": b""}), main)
+
+
+@pytest.fixture
+def builder(monkeypatch):
+    """The real HTTP handler, with the asciidoctor run replaced."""
+
+    def fake_build(data, main):
+        names = zipfile.ZipFile(io.BytesIO(data)).namelist()
+        if main == "fail.adoc":
+            raise server.BuildError(
+                server.HTTPStatus.UNPROCESSABLE_ENTITY, "asciidoctor: ERROR: boom"
+            )
+        return b"%PDF " + json.dumps(sorted(names)).encode(), ["asciidoctor: WARNING: w"]
+
+    monkeypatch.setattr(server, "build", fake_build)
+
+    def fake_diagram(source):
+        if b"boom" in source:
+            raise server.BuildError(server.HTTPStatus.UNPROCESSABLE_ENTITY, "PlantUML produced no SVG")
+        return b"<svg>" + source + b"</svg>"
+
+    monkeypatch.setattr(server, "render_diagram", fake_diagram)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}"
+    httpd.shutdown()
+
+
+def test_remote_compiler_round_trip(builder, tmp_path):
+    (tmp_path / "doc.adoc").write_text("= Doc")
+    (tmp_path / "logo.png").write_bytes(b"png")
+    (tmp_path / "old.pdf").write_bytes(b"skip me")
+    (tmp_path / "link.png").symlink_to(tmp_path / "logo.png")
+    pdf, messages = RemotePdfCompiler(builder, 10).compile(str(tmp_path / "doc.adoc"))
+    assert Path(pdf).read_bytes() == b'%PDF ["doc.adoc", "logo.png"]'
+    assert messages == ["asciidoctor: WARNING: w"]
+
+
+def test_remote_compiler_reports_failures(builder, tmp_path):
+    (tmp_path / "fail.adoc").write_text("= Doc")
+    with pytest.raises(ValueError, match="boom"):
+        RemotePdfCompiler(builder, 10).compile(str(tmp_path / "fail.adoc"))
+    with pytest.raises(ValueError, match="not reachable"):
+        RemotePdfCompiler("http://127.0.0.1:9", 2).compile(str(tmp_path / "fail.adoc"))
+
+
+def test_builder_uses_the_same_jvm_arguments_as_the_app():
+    assert server.PLANTUML_JAR == PLANTUML_JAR
+    assert server.JAVA_ARGS == JAVA_ARGS
+    command = server.diagram_command()
+    assert command[2:5] == ["--exec-limited", "10", str(server.MAX_SVG_BYTES)]
+    assert command[5:] == JAVA_ARGS
+
+
+@pytest.mark.parametrize(
+    "source",
+    [b"class A", b"@startuml\na\n@enduml\n@startuml\nb\n@enduml", b"@startditaa\nx\n@endditaa",
+     b"@startuml\na\nnewpage\nb\n@enduml"],
+)  # fmt: skip
+def test_builder_renders_only_one_uml_diagram(source):
+    with pytest.raises(server.BuildError, match="one @startuml"):
+        server.render_diagram(source)
+
+
+def test_limits_kill_cpu_and_output_hogs(tmp_path, monkeypatch):
+    """The real limiter, with a Python child instead of PlantUML."""
+    hog = "import sys; sys.stdout.buffer.write(b'<svg' + b'x' * 10_000_000)"
+    monkeypatch.setattr(server, "JAVA_ARGS", [server.sys.executable, "-c", hog])
+    with pytest.raises(server.BuildError, match="too large"):
+        server.render_diagram(b"@startuml\nclass A\n@enduml\n")
+    monkeypatch.setattr(server, "CPU_SECONDS", 1)
+    spin = "while True: pass"
+    monkeypatch.setattr(server, "JAVA_ARGS", [server.sys.executable, "-c", spin])
+    with pytest.raises(server.BuildError, match="CPU time"):
+        server.render_diagram(b"@startuml\nclass A\n@enduml\n")
+
+
+def test_remote_diagram_round_trip(builder, monkeypatch):
+    document = "@startuml\nclass A\n@enduml\n"
+    svg = RemoteDiagramRenderer(builder, 10).render_svg(document)
+    assert svg == b"<svg>" + document.encode() + b"</svg>"
+    with pytest.raises(ValueError, match="could not be rendered"):
+        RemoteDiagramRenderer(builder, 10).render_svg("boom")
+    monkeypatch.setattr(server, "MAX_DIAGRAM_BYTES", 10)
+    with pytest.raises(ValueError, match="could not be rendered"):
+        RemoteDiagramRenderer(builder, 10).render_svg("class TooLongForTheLimit")
+    with pytest.raises(ValueError, match="not available"):
+        RemoteDiagramRenderer("http://127.0.0.1:9", 2).render_svg(document)

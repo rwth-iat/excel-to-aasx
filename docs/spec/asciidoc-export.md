@@ -70,10 +70,8 @@ All **[ours]**; Package Explorer has no generator.
 5. ASCII-only blobs of non-text types (SVG) are stored base64-encoded, the way Package Explorer expects (section 4.1); binary and text blobs are stored as they are.
 6. The rest of the package is copied part by part; only the AAS XML is replaced, and the AAS that references the data submodel also references the new one.
 
-## Check against the example
+## Check against the demo and the reference files
 
-Example workbook → `import` → `add-document` → `pdf` gives a 31-page IDTA-style PDF with 20 tables and the UML overview, without errors.
+Demo workbook (`demo-level-sensor.xlsx`) → `import` → `add-document` → `pdf` gives a 13-page IDTA-style PDF with 5 tables and the UML overview, without errors or warnings (checked 2026-11-25). `tests/test_golden_starter.py` runs this chain.
 
-
-
-`excel-to-aasx adoc examples/*.aasx -o out/doc` writes the document, its 25 tables, the UML diagram and 18 files with no errors or warnings. `excel-to-aasx pdf` then builds a PDF whose text equals the example PDF word for word (9,110 words), and whose 39 pages match the example's pixel for pixel at 30 dpi (checked 2026-11-19). The golden test checks the word-for-word part when Docker and `pdftotext` are available. 89 of 96 prose lines are found verbatim in the text of the example PDF; the other 7 differ only by rendering (cross-references become "Figure 2", citations, hyphenation).
+Measured once against the vendor reference files, which are local only and read by no test (ADR 0010), on 2026-11-19: their workbook gave a 31-page PDF with 20 tables. `adoc` on their AASX wrote the document, 25 tables, the UML diagram and 18 files with no errors or warnings, and `pdf` built a PDF whose text equals the vendor's PDF word for word (9,110 words) and whose 39 pages match it pixel for pixel at 30 dpi. 89 of 96 prose lines were found verbatim in the text of the vendor's PDF; the other 7 differ only by rendering (cross-references become "Figure 2", citations, hyphenation).

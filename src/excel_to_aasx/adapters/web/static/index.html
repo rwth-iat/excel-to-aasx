@@ -30,6 +30,10 @@
         <input id="file" type="file" accept=".xlsx,.aasx">
         <span>Drop a <strong>.xlsx</strong> or <strong>.aasx</strong> file here, or click to choose one</span>
       </label>
+      <p class="example">No file at hand?
+        <button id="try-example" class="link" type="button">Try the demo workbook</button>
+        (an invented radar level sensor) or
+        <a href="/static/examples/demo-level-sensor.xlsx" download>download it</a> to see the layout.</p>
       <p class="fine">Nothing is stored: your files are deleted when you leave or after two hours of inactivity.
         Download what you want to keep.</p>
       <p id="error" class="error" role="alert" hidden></p>
@@ -51,7 +55,7 @@
           <button id="tab-html" class="tab active" type="button" role="tab">Preview</button>
           <button id="tab-pdf" class="tab" type="button" role="tab" disabled>PDF</button>
           <label class="muted sync"><input id="sync" type="checkbox" checked> follow editor</label>
-          <span class="muted hint">The preview approximates the PDF; diagrams, theme and page layout appear only in the PDF.</span>
+          <span class="muted hint">The preview approximates the PDF; theme and page layout appear only in the PDF.</span>
         </div>
         <iframe id="preview" class="preview" sandbox="allow-same-origin" title="HTML preview"></iframe>
         <iframe id="pdf" class="preview" title="PDF" hidden></iframe>

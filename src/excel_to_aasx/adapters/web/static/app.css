@@ -46,6 +46,12 @@ body { margin: 0; height: 100vh; display: flex; flex-direction: column; }
 .drop:hover, .drop.over { border-color: var(--idta-blue); color: var(--idta-blue); background: #f2f5ff; }
 .drop input { display: none; }
 .drop.busy { pointer-events: none; opacity: .6; }
+.example { margin: 0 0 1rem; }
+.link {
+  padding: 0; border: 0; background: none; color: var(--idta-blue); font: inherit;
+  text-decoration: underline; cursor: pointer;
+}
+.link:disabled { opacity: .6; cursor: progress; }
 .fine { font-size: .85rem; color: var(--muted); }
 .error { color: var(--danger); white-space: pre-wrap; }
 

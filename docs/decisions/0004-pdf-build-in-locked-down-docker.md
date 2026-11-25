@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-11-19
-- **Relates to:** AASX → PDF (`pdf` command), the planned web editor, `docs/spec/asciidoc-export.md`
+- **Relates to:** AASX → PDF (`pdf` command), the planned web editor, `docs/spec/asciidoc-export.md`. On a server, ADR 0009 replaces the container per build with a builder service.
 
 ## Context
 

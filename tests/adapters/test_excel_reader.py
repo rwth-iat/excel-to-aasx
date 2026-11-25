@@ -4,16 +4,15 @@ import openpyxl
 import pytest
 
 from excel_to_aasx.adapters.excel import ExcelSheetReader, cell_text
-from tests.adapters.test_aasx_reader import EXAMPLE
+from tests.demo import DEMO
 
-WORKBOOK = EXAMPLE.with_name("Import_Properties_Schwebe_2_added_Li_v09_HOMI_Gerd-1.xlsx")
 LIMIT = 50 * 1024 * 1024
 
 
-def test_reads_all_sheets_of_example():
-    sheets = ExcelSheetReader(LIMIT).read(str(WORKBOOK))
+def test_reads_all_sheets_of_demo():
+    sheets = ExcelSheetReader(LIMIT).read(str(DEMO))
     assert [s.name for s in sheets] == ["Import", "README"]
-    assert sheets[0].rows[0][:2] == ["idShort:", "NAMUR_SMT_FloatTypeFowMeter"]
+    assert sheets[0].rows[0][:2] == ["idShort:", "DemoLevelSensor"]
 
 
 @pytest.mark.parametrize(
@@ -27,7 +26,7 @@ def test_cell_text(value, text):
 
 def test_rejects_workbook_over_size_limit():
     with pytest.raises(ValueError, match="limit 1000"):
-        ExcelSheetReader(1000).read(str(WORKBOOK))
+        ExcelSheetReader(1000).read(str(DEMO))
 
 
 def test_rejects_non_workbook(tmp_path):

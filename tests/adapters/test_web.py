@@ -20,8 +20,9 @@ from excel_to_aasx.app.add_document import add_document, has_document
 from excel_to_aasx.app.export_document import export_document
 from excel_to_aasx.app.import_workbook import import_workbook
 from excel_to_aasx.app.open_upload import open_upload
-from tests.adapters.test_aasx_reader import EXAMPLE, LIMIT
-from tests.adapters.test_excel_reader import WORKBOOK
+from tests.adapters.test_aasx_reader import LIMIT
+from tests.demo import DEMO
+
 
 
 def _fake_pdf(adoc: str) -> tuple[str, list[str]]:
@@ -30,18 +31,24 @@ def _fake_pdf(adoc: str) -> tuple[str, list[str]]:
     return str(target), ["asciidoctor: WARNING: fake"]
 
 
+def _fake_svg(source: str) -> bytes:
+    if "boom" in source:
+        raise ValueError("boom")
+    return f"<svg><text>{len(source)}</text></svg>".encode()
+
+
 def _add_document(editor, source, target, submodel):
     return add_document(editor, load_frame, source, target, submodel, datetime.date(2026, 11, 19))
 
 
-def _app(tmp_path, compile_pdf=_fake_pdf, **limits):
+def _app(tmp_path, compile_pdf=_fake_pdf, render_diagram=_fake_svg, **limits):
     editor = AasxDocumentEditor(LIMIT)
     import_ = partial(import_workbook, ExcelSheetReader(LIMIT), AasxPackageWriter())
     add = partial(_add_document, editor)
     export = partial(export_document, AasxDocumentReader(LIMIT), FolderDocumentWriter())
     opener = partial(open_upload, import_, add, partial(has_document, editor), export)
     workspaces = Workspaces(tmp_path / "ws", idle_seconds=60, max_count=limits.pop("max_count", 10))
-    app = create_app(WebServices(opener, compile_pdf), workspaces, WebLimits(**limits))
+    app = create_app(WebServices(opener, compile_pdf, render_diagram), workspaces, WebLimits(**limits))
     return TestClient(app), workspaces
 
 
@@ -61,34 +68,47 @@ def test_index_and_security_headers(client):
     assert "script-src 'self'" in response.headers["content-security-policy"]
     assert response.headers["x-frame-options"] == "DENY"
     assert client.get("/static/vendor/codemirror.js").status_code == 200
+    assert 'id="try-example"' in response.text
     nonce = response.text.split('name="csp-nonce" content="')[1].split('"')[0]
     assert len(nonce) > 16
     assert f"style-src 'self' 'nonce-{nonce}'" in response.headers["content-security-policy"]
     assert nonce not in client.get("/").text  # fresh per request
 
 
+def test_home_page_demo_workbook_imports_cleanly(client, tmp_path):
+    response = client.get("/static/examples/demo-level-sensor.xlsx")
+    assert response.status_code == 200
+    demo = tmp_path / "demo.xlsx"
+    demo.write_bytes(response.content)
+    body = _upload(client, demo).json()
+    assert body["issues"] == [] and body["document"]["text"]
+
+
 def test_excel_upload_gives_package_and_document(client):
-    response = _upload(client, WORKBOOK)
+    response = _upload(client, DEMO)
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["kind"] == "xlsx"
-    assert body["document"]["name"] == "AsciiDoc_NAMUR_SMT_FloatTypeFowMeter.adoc"
-    assert "Table for Submodel NAMUR_SMT_FloatTypeFowMeter" in body["document"]["text"]
-    assert any(i["severity"] == "warning" for i in body["issues"])
+    assert body["document"]["name"] == "AsciiDoc_DemoLevelSensor.adoc"
+    assert "Table for Submodel DemoLevelSensor" in body["document"]["text"]
     package = client.get(f"/api/workspaces/{body['id']}/package.aasx")
     assert package.status_code == 200 and package.content[:2] == b"PK"
 
 
-def test_aasx_with_document_is_used_as_is(client):
-    body = _upload(client, EXAMPLE).json()
-    assert body["document"]["name"] == "AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter.adoc"
+def test_aasx_with_document_is_used_as_is(client, tmp_path):
+    first = _upload(client, DEMO).json()
+    package = tmp_path / "with-document.aasx"
+    package.write_bytes(client.get(f"/api/workspaces/{first['id']}/package.aasx").content)
+    body = _upload(client, package).json()
+    assert body["kind"] == "aasx"
+    assert body["document"] == first["document"]
     asset = client.get(f"/api/workspaces/{body['id']}/files/idta-spec-badge.png")
     assert asset.status_code == 200 and asset.content.startswith(b"\x89PNG")
     assert asset.headers["content-security-policy"].startswith("sandbox")
 
 
 def test_edit_save_zip_and_pdf(client):
-    workspace = _upload(client, WORKBOOK).json()["id"]
+    workspace = _upload(client, DEMO).json()["id"]
     assert (
         client.put(f"/api/workspaces/{workspace}/document", content="= Edited\n").status_code == 204
     )
@@ -115,26 +135,26 @@ def test_rejects_bad_uploads(client, tmp_path):
 
 def test_upload_and_document_size_limits(tmp_path):
     client, _ = _app(tmp_path, max_upload_bytes=1000, max_document_bytes=10)
-    assert _upload(client, WORKBOOK).status_code == 413
+    assert _upload(client, DEMO).status_code == 413
     client2, _ = _app(tmp_path / "2", max_document_bytes=10)
-    workspace = _upload(client2, WORKBOOK).json()["id"]
+    workspace = _upload(client2, DEMO).json()["id"]
     assert client2.put(f"/api/workspaces/{workspace}/document", content="x" * 11).status_code == 413
 
 
 def test_unknown_or_malformed_workspace_and_file_names(client):
     assert client.get("/api/workspaces/" + "0" * 32 + "/package.aasx").status_code == 404
     assert client.get("/api/workspaces/../package.aasx").status_code == 404
-    workspace = _upload(client, EXAMPLE).json()["id"]
+    workspace = _upload(client, DEMO).json()["id"]
     for name in ("..%2Fmeta.json", ".hidden", "missing.png"):
         assert client.get(f"/api/workspaces/{workspace}/files/{name}").status_code == 404
 
 
 def test_session_cap_and_delete(tmp_path):
     client, workspaces = _app(tmp_path, max_count=1)
-    workspace = _upload(client, EXAMPLE).json()["id"]
-    assert _upload(client, EXAMPLE).status_code == 503
+    workspace = _upload(client, DEMO).json()["id"]
+    assert _upload(client, DEMO).status_code == 503
     assert client.delete(f"/api/workspaces/{workspace}").status_code == 204
-    assert _upload(client, EXAMPLE).status_code == 200
+    assert _upload(client, DEMO).status_code == 200
 
 
 def test_idle_workspaces_expire(tmp_path):
@@ -151,7 +171,7 @@ def test_pdf_failure_is_reported(tmp_path):
         raise ValueError("boom")
 
     client, _ = _app(tmp_path, compile_pdf=failing)
-    workspace = _upload(client, EXAMPLE).json()["id"]
+    workspace = _upload(client, DEMO).json()["id"]
     response = client.post(f"/api/workspaces/{workspace}/pdf", content="= x")
     assert response.status_code == 422 and "boom" in response.json()["detail"]
 
@@ -161,7 +181,7 @@ def test_body_limit_without_declared_length(tmp_path):
 
     def chunks():
         yield (
-            b"--b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.xlsx\"\r\n"
+            b'--b\r\nContent-Disposition: form-data; name="file"; filename="a.xlsx"\r\n'
             b"Content-Type: application/octet-stream\r\n\r\n"
         )
         for _ in range(100):
@@ -178,7 +198,7 @@ def test_body_limit_without_declared_length(tmp_path):
 
 def test_symlinks_are_never_served_or_zipped(tmp_path):
     client, workspaces = _app(tmp_path)
-    workspace = _upload(client, EXAMPLE).json()["id"]
+    workspace = _upload(client, DEMO).json()["id"]
     folder = workspaces.get(workspace)
     assert folder is not None
     secret = tmp_path / "secret.txt"

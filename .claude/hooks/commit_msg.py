@@ -14,6 +14,8 @@ TYPES = ("feat", "fix", "refactor", "docs", "test", "chore", "perf")
 SUBJECT = re.compile(rf"^({'|'.join(TYPES)})(\([a-z0-9][a-z0-9-]*\))?!?: \S")
 SUBJECT_MAX = 50
 BODY_MAX = 72
+# Advisory only: a long body is sometimes right (security fix, trade-off), so never reject.
+BODY_LINES_ADVISED = 8
 SKIP_PREFIXES = ("Merge ", "Revert ", "fixup! ", "squash! ", "amend! ")
 SCISSORS = "# ------------------------ >8 ------------------------"
 
@@ -47,6 +49,19 @@ def violations(message: str) -> list[str]:
     return found
 
 
+def advice(message: str) -> list[str]:
+    lines = _meaningful_lines(message)
+    if not lines or lines[0].startswith(SKIP_PREFIXES):
+        return []
+    body = [line for line in lines[1:] if line.strip()]
+    if len(body) > BODY_LINES_ADVISED:
+        return [
+            f"body has {len(body)} lines; usually 1-3 are enough "
+            "(the reason and the trade-off; details belong in the ADR or PR)"
+        ]
+    return []
+
+
 def _meaningful_lines(message: str) -> list[str]:
     lines = message.split(SCISSORS)[0].splitlines()
     kept = [line.rstrip() for line in lines if not line.startswith("#")]
@@ -77,7 +92,10 @@ def _unbreakable(line: str) -> bool:
 
 def main() -> int:
     with open(sys.argv[1], encoding="utf-8") as handle:
-        problems = violations(handle.read())
+        message = handle.read()
+    for note in advice(message):
+        print(f"commit-msg: note: {note}", file=sys.stderr)
+    problems = violations(message)
     if not problems:
         return 0
     print("commit-msg: message rejected", file=sys.stderr)

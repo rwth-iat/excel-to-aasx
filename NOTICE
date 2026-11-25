@@ -1,0 +1,49 @@
+excel-to-aasx
+Copyright 2026 The excel-to-aasx contributors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+
+Eclipse AASX Package Explorer
+-----------------------------
+
+Parts of this project are Python ports of source code from the Eclipse AASX
+Package Explorer (https://github.com/eclipse-aaspe/package-explorer), licensed
+under the Apache License, Version 2.0. Its copyright holders include Festo AG &
+Co. KG, PHOENIX CONTACT GmbH & Co. KG, Fraunhofer IOSB-INA, Schneider Electric
+Automation GmbH, SICK AG, KEB Automation KG and Lenze SE; see that project's
+NOTICE.md and src/LICENSE.txt.
+
+The ported code was translated from C# to Python and modified. Ported modules:
+
+- src/excel_to_aasx/domain/importing/ (ImportPopulateByTable, "Import NAMUR
+  SMTs" table preset)
+- src/excel_to_aasx/domain/ids.py (IriIrdiRemoveVersion)
+- src/excel_to_aasx/domain/document/ (ExportSmt, ExportTableProcessor, the
+  "Submodel template spec - AsciiDoc" table preset, Uml/PlantUmlWriter)
+- src/excel_to_aasx/adapters/aasx/table_model.py
+  (FindConceptDescriptionByReference)
+
+docs/spec/namur-import.md and docs/spec/asciidoc-export.md name the C# source
+files and mark which behaviour reproduces them.
+
+"Eclipse AASX Package Explorer" is a trademark of the Eclipse Foundation. This
+project is not affiliated with or endorsed by the Eclipse Foundation.
+
+
+Third-party files shipped with this project
+-------------------------------------------
+
+- DejaVu Sans Mono fonts (src/excel_to_aasx/adapters/templates/idta/assets/
+  DejaVuSansMono*.ttf): Bitstream Vera license, see
+  src/excel_to_aasx/adapters/templates/idta/LICENSE-DejaVu.txt.
+- CodeMirror and Asciidoctor.js (src/excel_to_aasx/adapters/web/static/vendor/):
+  MIT, see the *.LICENSE files next to them.
+- IDTA cover graphics, logo, badge, theme and stylesheet
+  (src/excel_to_aasx/adapters/templates/idta/assets/ other than the fonts):
+  taken from an IDTA submodel template package. They are not covered by the
+  Apache License of this project; rights remain with their owners. IDTA names
+  and logos may be trademarks of the Industrial Digital Twin Association.
+- examples/: third-party reference files (vendor workbook, AASX package and
+  PDF). They are not covered by the Apache License of this project and must not
+  be redistributed without their owners' permission.

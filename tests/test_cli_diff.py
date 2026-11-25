@@ -5,7 +5,7 @@ from excel_to_aasx.adapters import cli
 from excel_to_aasx.adapters.aasx import AasxPackageReader
 from excel_to_aasx.app.compare_packages import compare_packages
 from tests.aasx_fixture import collection, environment, property_, submodel, write_aasx
-from tests.adapters.test_aasx_reader import EXAMPLE, LIMIT
+from tests.adapters.test_aasx_reader import LIMIT
 
 NAMES = {"en": "manufacturer article number", "de": "Herstellerartikelnummer"}
 
@@ -26,41 +26,60 @@ def _diff(*args: str) -> tuple[int, str]:
 
 def _general(*children):
     names = {"en": "General", "de": "Allgemein"}
-    return collection("General", "0173-1#02-temp1", *children, names=names)
+    return collection("General", "s:general", *children, names=names)
 
 
-def test_subset_of_example_has_no_differences(tmp_path):
-    produced = environment(
+def _reference(tmp_path) -> str:
+    """Imported tree below a mount point, plus later edits: the shape ADR 0003 describes."""
+    edited = environment(
         submodel(
-            "Import",
-            _general(property_("ManufacturerArticleNumber", "0173-1#02-AAO676", names=NAMES)),
+            "TechnicalData",
+            collection(
+                "TechnicalPropertyAreas",
+                "s:areas",
+                collection(
+                    "Imported",
+                    "s:imported",
+                    _general(
+                        property_("ArticleNumber", "s:article", names=NAMES),
+                        property_("AddedLater", "s:added"),
+                    ),
+                ),
+            ),
         )
     )
-    code, out = _diff(str(write_aasx(tmp_path / "p.aasx", produced)), str(EXAMPLE))
+    return str(write_aasx(tmp_path / "reference.aasx", edited))
+
+
+def test_subset_of_reference_has_no_differences(tmp_path):
+    produced = environment(
+        submodel("Import", _general(property_("ArticleNumber", "s:article", names=NAMES)))
+    )
+    code, out = _diff(str(write_aasx(tmp_path / "p.aasx", produced)), _reference(tmp_path))
     assert code == 0, out
-    assert "NamurTechnicalDataVariableAreaFlowMeter/TechnicalPropertyAreas/ECLASS_ADV_V17" in out
+    assert "TechnicalData/TechnicalPropertyAreas/Imported" in out
 
 
-def test_reports_differences_against_example(tmp_path):
+def test_reports_differences_against_reference(tmp_path):
     produced = environment(
         submodel(
             "Import",
             _general(
-                property_("ManufacturerArticleNumber", "0173-1#02-AAO676", "ZeroToOne", NAMES),
+                property_("ArticleNumber", "s:article", "ZeroToOne", NAMES),
                 property_("NotInReference", "x:y"),
             ),
         )
     )
-    code, out = _diff(str(write_aasx(tmp_path / "p.aasx", produced)), str(EXAMPLE))
+    code, out = _diff(str(write_aasx(tmp_path / "p.aasx", produced)), _reference(tmp_path))
     assert code == 1
-    assert "General/ManufacturerArticleNumber  cardinality: 'ZeroToOne' != 'One'" in out
+    assert "General/ArticleNumber  cardinality: 'ZeroToOne' != 'One'" in out
     assert "General/NotInReference  missing" in out
 
 
 def test_explicit_mount_and_bad_input(tmp_path):
     produced = environment(submodel("Import", _general()))
     path = str(write_aasx(tmp_path / "p.aasx", produced))
-    code, out = _diff(path, str(EXAMPLE), "--submodel", "NamurTechnicalDataVariableAreaFlowMeter")
+    code, out = _diff(path, _reference(tmp_path), "--submodel", "TechnicalData")
     assert code == 1 and "General  missing" in out
     assert _diff(path, str(tmp_path / "missing.aasx"))[0] == 2
 

@@ -1,6 +1,6 @@
 # 0006. Live preview in HTML in the browser; the PDF is built on request
 
-- **Status:** accepted
+- **Status:** accepted; PlantUML diagrams in the preview revised by ADR 0011
 - **Date:** 2026-11-19
 - **Relates to:** ADR 0004, ADR 0005, the web editor
 

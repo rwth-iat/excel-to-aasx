@@ -1,6 +1,7 @@
 import { basicSetup, EditorView } from "/static/vendor/codemirror.js";
 import * as api from "./api.js";
-import { renderPreview, syncPreview } from "./preview.js";
+import { createDiagrams } from "./diagrams.js";
+import { renderPreview, showDiagrams, syncPreview } from "./preview.js";
 
 const $ = (id) => document.getElementById(id);
 let workspace = null;
@@ -8,6 +9,7 @@ let editor = null;
 let pdfUrl = null;
 let previewTimer = null;
 let saveTimer = null;
+let diagrams = null;
 
 function showError(message) {
   $("error").textContent = message;
@@ -46,7 +48,7 @@ function topLine() {
 function onEdit() {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(async () => {
-    await renderPreview($("preview"), text(), api.filesUrl(workspace));
+    await renderPreview($("preview"), text(), api.filesUrl(workspace), diagrams);
     follow(cursorLine());
   }, 300);
   clearTimeout(saveTimer);
@@ -57,6 +59,10 @@ const text = () => editor.state.doc.toString();
 
 function openWorkspace(result) {
   workspace = result.id;
+  diagrams = createDiagrams(
+    (source) => api.renderDiagram(workspace, source),
+    () => showDiagrams($("preview"), diagrams),
+  );
   $("start").hidden = true;
   $("workspace").hidden = false;
   $("actions").hidden = false;
@@ -78,7 +84,7 @@ function openWorkspace(result) {
     parent: $("editor"),
   });
   editor.scrollDOM.addEventListener("scroll", () => follow(topLine()), { passive: true });
-  renderPreview($("preview"), result.document.text, api.filesUrl(workspace));
+  renderPreview($("preview"), result.document.text, api.filesUrl(workspace), diagrams);
 }
 
 async function handleFile(file) {
@@ -130,6 +136,19 @@ $("drop").addEventListener("drop", (e) => {
   e.preventDefault();
   $("drop").classList.remove("over");
   handleFile(e.dataTransfer.files[0]);
+});
+$("try-example").addEventListener("click", async () => {
+  const button = $("try-example");
+  button.disabled = true;
+  try {
+    const response = await fetch("/static/examples/demo-level-sensor.xlsx");
+    if (!response.ok) throw new Error(`example not available (${response.status})`);
+    await handleFile(new File([await response.blob()], "demo-level-sensor.xlsx"));
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    button.disabled = false;
+  }
 });
 $("build-pdf").addEventListener("click", buildPdf);
 

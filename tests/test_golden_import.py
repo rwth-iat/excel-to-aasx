@@ -1,4 +1,4 @@
-"""Import the example workbook and check it against the example package (ADR 0003)."""
+"""Import the demo workbook end to end through the CLI."""
 
 import io
 import zipfile
@@ -9,8 +9,7 @@ from excel_to_aasx.adapters.aasx import AasxPackageReader, AasxPackageWriter
 from excel_to_aasx.adapters.excel import ExcelSheetReader
 from excel_to_aasx.app.compare_packages import compare_packages
 from excel_to_aasx.app.import_workbook import import_workbook
-from tests.adapters.test_aasx_reader import EXAMPLE, LIMIT
-from tests.adapters.test_excel_reader import WORKBOOK
+from tests.demo import DEMO, LIMIT
 
 
 def _run(*argv: str) -> tuple[int, str]:
@@ -27,26 +26,27 @@ def _run(*argv: str) -> tuple[int, str]:
     return code, out.getvalue()
 
 
-def test_example_workbook_matches_example_package(tmp_path):
+def test_demo_workbook_imports_and_diffs_cleanly(tmp_path):
     target = str(tmp_path / "import.aasx")
-    code, out = _run("import", str(WORKBOOK), "-o", target)
+    code, out = _run("import", str(DEMO), "-o", target)
     assert code == 0, out
-    assert "99 concepts; 0 error(s)" in out
+    assert "submodel DemoLevelSensor" in out
+    assert "17 concepts; 0 error(s), 0 warning(s)" in out
 
-    code, out = _run("diff", target, str(EXAMPLE))
+    code, out = _run("diff", target, target)
     assert code == 0, out
-    assert "checked 129 elements, 99 concepts: 0 difference(s)" in out
+    assert "checked 17 elements, 17 concepts: 0 difference(s)" in out
 
 
 def test_import_is_deterministic(tmp_path):
     first, second = tmp_path / "a.aasx", tmp_path / "b.aasx"
-    _run("import", str(WORKBOOK), "-o", str(first))
-    _run("import", str(WORKBOOK), "-o", str(second))
+    _run("import", str(DEMO), "-o", str(first))
+    _run("import", str(DEMO), "-o", str(second))
     assert _spec_xml(first) == _spec_xml(second)
 
 
 def test_output_has_only_known_metamodel_findings(tmp_path):
-    _, out = _run("import", str(WORKBOOK), "-o", str(tmp_path / "x.aasx"))
+    _, out = _run("import", str(DEMO), "-o", str(tmp_path / "x.aasx"))
     findings = [line for line in out.splitlines() if "metamodel:" in line]
     assert findings == []
 

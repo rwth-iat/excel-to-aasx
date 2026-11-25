@@ -147,6 +147,7 @@ Enforced by the git `commit-msg` hook.
 - Conventional Commits: `type(scope): summary` (types: feat, fix, refactor, docs, test, chore, perf).
 - Summary: imperative mood, max ~50 chars, no trailing period.
 - Blank line, then a body wrapped at 72 chars explaining *why* and notable trade-offs. Skip it for trivial changes.
+- Keep the body short: usually 1–3 lines. Longer only when a reader would otherwise misread the change (e.g. a security fix's failure scenario). Do not restate the ADR or PR; point to it. The hook warns above 8 lines but does not reject.
 - Describe intent, not a file-by-file list. One logical change per commit.
 - No emojis, no "This commit...", no marketing language, no Co-authored-by trailer.
 

@@ -33,10 +33,10 @@ def test_table_header_and_top_rows():
 
 def test_body_row_per_child():
     text = _table(
-        _general(Element("Property", "Name", value_type="xs:string", value_text="KROHNE"))
+        _general(Element("Property", "Name", value_type="xs:string", value_text="ACME"))
     )
     assert "|{set:cellbgcolor:#eeeeee}[Prop]  +\n +\nName\n" in text
-    assert "|[xs:string]  +\n +\nKROHNE\n" in text
+    assert "|[xs:string]  +\n +\nACME\n" in text
 
 
 def test_column_widths_override():

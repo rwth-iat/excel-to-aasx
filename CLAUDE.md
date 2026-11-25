@@ -2,9 +2,7 @@
 
 Converts vendor Excel property sheets into AASX packages (AAS metamodel V3.1). The reference implementation is the Excel importer in the [AASX Package Explorer](https://github.com/eclipse-aaspe/package-explorer) (C#): match its output before inventing behaviour.
 
-Planned later:
-1. AASX → AsciiDoc rendering of a submodel specification (like the IDTA spec PDF in `examples/`).
-2. A web editor, similar to Overleaf: edit the AsciiDoc, see a live PDF preview.
+It also renders a submodel as an IDTA-style AsciiDoc specification and builds the PDF (ADR 0004, 0008), and offers a browser editor, similar to Overleaf: edit the AsciiDoc, see a live preview, build the PDF on request (ADR 0005-0007, 0009).
 
 Past decisions: `docs/decisions/`. Stack (ADR 0001): Python ≥ 3.12, `uv`, `aas-core3.1` for the AAS model, `openpyxl`, `defusedxml`.
 Import rules: `docs/spec/namur-import.md` is the contract (ADR 0002). AsciiDoc export rules: `docs/spec/asciidoc-export.md`. Code follows the specs; change the spec first.
@@ -13,28 +11,33 @@ Import rules: `docs/spec/namur-import.md` is the contract (ADR 0002). AsciiDoc e
 uv sync                                    # install, including dev tools
 uv run pytest -q                           # tests
 uv run pyright                             # types
-uv run excel-to-aasx import examples/*.xlsx -o out/import.aasx
-uv run excel-to-aasx diff out/import.aasx examples/*.aasx   # superset check (ADR 0003)
+uv run excel-to-aasx import src/excel_to_aasx/adapters/web/static/examples/demo-level-sensor.xlsx -o out/import.aasx
 uv run excel-to-aasx add-document out/import.aasx -o out/doc.aasx   # IDTA starter document (ADR 0008)
-uv run excel-to-aasx adoc examples/*.aasx -o out/doc          # AsciiDoc submodel -> folder
-uv run excel-to-aasx pdf examples/*.aasx -o out/pdf           # ... plus PDF (needs Docker, ADR 0004)
+uv run excel-to-aasx adoc out/doc.aasx -o out/doc             # AsciiDoc submodel -> folder
+uv run excel-to-aasx pdf out/doc.aasx -o out/pdf              # ... plus PDF (needs Docker, ADR 0004)
+uv run excel-to-aasx diff out/import.aasx examples/*.aasx     # superset check against local reference files (ADR 0003)
+uv run python tools/make_demo_workbook.py                     # rewrite the demo workbook
 docker pull asciidoctor/docker-asciidoctor:1.108.1            # once; tests that need it skip without it
 uv run excel-to-aasx serve --port 8000                        # web app (ADR 0005-0007)
 tools/vendor.sh                                               # rebuild vendored JS (needs npm)
 docker compose up -d --build                                  # app + builder, see docs/deployment.md
 ```
 
-## Reference material (`examples/`)
+## Reference material (`examples/`, local only)
+
+**Not in git, never commit it, and no test may read it** (ADR 0010): the workbook is marked RESTRICTED by its owner, and the AASX holds vendor logos and product images. `/examples/` is in `.gitignore`. Developers who have the files keep them there for manual checks only.
+
+The public stand-in is `src/excel_to_aasx/adapters/web/static/examples/demo-level-sensor.xlsx` (`tests/demo.py`), written by `tools/make_demo_workbook.py` with invented values. Tests and the web app's home page use it. Never put real vendor data or ECLASS definitions in it. Tests that need a reference package build one in code.
 
 | File | What it is |
 |---|---|
-| `Import_Properties_Schwebe_2_added_Li_v09_HOMI_Gerd-1.xlsx` | Input. Sheets `Import` (properties) and `README` (format notes). |
-| `Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx` | Expected output of the import (AAS V3.1 XML, plus supplementary files). |
-| `AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter-1.pdf` | Rendered spec (IDTA 02200-1-0). Its AsciiDoc source lives inside the AASX, as the submodel `AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter` (Package Explorer AsciiDoc function, semanticId `http://admin-shell.io/aasx-package-explorer/functions/asciidoc/1/0`). |
+| the `.xlsx` | Input. Sheets `Import` (properties) and `README` (format notes). |
+| the `.aasx` | Expected output of the import (AAS V3.1 XML, plus supplementary files). |
+| the `.pdf` | Rendered spec (IDTA 02200-1-0). Its AsciiDoc source lives inside the AASX, as the submodel `AsciiDoc_Namur_SMT_Tech_Data_Variable_Flow_Meter` (Package Explorer AsciiDoc function, semanticId `http://admin-shell.io/aasx-package-explorer/functions/asciidoc/1/0`). |
 
 The AASX is not the raw import of the xlsx: it was edited afterwards (ADR 0003). The imported tree sits under `TechnicalPropertyAreas/ECLASS_ADV_V17` of `NamurTechnicalDataVariableAreaFlowMeter`.
 
-These files cannot be regenerated. Never modify or delete them; the `guard` hook blocks `rm` on `*.xlsx`, `*.aasx`, `*.pdf`. Generated output goes to `out/` (gitignored).
+These files cannot be regenerated. Never modify or delete them, and never copy them anywhere that is served or committed; the `guard` hook blocks `rm` on `*.xlsx`, `*.aasx`, `*.pdf`. Generated output goes to `out/` (gitignored).
 
 ## Hard rules
 
@@ -74,7 +77,7 @@ Open question for an early ADR: whether the AAS SDK's model types (e.g. basyx) m
 - **Name the seam before you write code.** Say which layer this belongs in. Unclear? Resolve the design first.
 - **Port before implementation.** Protocol, then use-case, then adapter. The most-likely-to-change piece is written last and stays smallest.
 - **Wire in exactly one place**: `src/excel_to_aasx/main.py`. No singletons, no module-level construction.
-- **Test at the cheapest layer** that proves the thing. The end-to-end test is: `examples/*.xlsx` in, AASX equivalent to `examples/*.aasx` out.
+- **Test at the cheapest layer** that proves the thing. The end-to-end test is: demo workbook in, AASX, starter document, AsciiDoc and PDF out (`tests/test_golden_*.py`). Comparing with real vendor data is a manual `diff` (ADR 0010).
 
 | Budget | Soft | Hard |
 |---|---|---|

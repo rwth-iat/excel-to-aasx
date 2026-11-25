@@ -11,3 +11,6 @@ out/
 .env.*
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Third-party reference files (see NOTICE); keep them local only.
+/examples/

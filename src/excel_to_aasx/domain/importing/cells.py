@@ -115,7 +115,7 @@ def parse_cardinality(text: str) -> str:
 
 
 # `text@de`: a language tag only when it ends the word. PE splits at every `@`, which
-# turns `support@krohne.com` into a language "krohne".
+# turns `support@acme.example` into a language "acme".
 _LANGUAGE_MARKER = re.compile(r"@([a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*)(?=\s|$)")
 
 

@@ -1,26 +1,25 @@
 import zipfile
-from pathlib import Path
-
 import pytest
 
-from excel_to_aasx.adapters.aasx import AasxPackageReader
+from excel_to_aasx.adapters.aasx import AasxPackageReader, AasxPackageWriter
+from excel_to_aasx.adapters.excel import ExcelSheetReader
+from excel_to_aasx.app.import_workbook import import_workbook
 from tests.aasx_fixture import collection, environment, property_, submodel, write_aasx
+from tests.demo import DEMO
 
-EXAMPLE = (
-    Path(__file__).parents[2]
-    / "examples"
-    / ("Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx")
-)
 LIMIT = 10 * 1024 * 1024
 
 
-def test_reads_example_package():
-    snapshot = AasxPackageReader(LIMIT).read(str(EXAMPLE))
+def test_reads_imported_demo_package(tmp_path):
+    package = tmp_path / "demo.aasx"
+    import_workbook(ExcelSheetReader(LIMIT), AasxPackageWriter(), str(DEMO), str(package))
+    snapshot = AasxPackageReader(LIMIT).read(str(package))
 
-    data = snapshot.submodels["NamurTechnicalDataVariableAreaFlowMeter"]
-    number = data["TechnicalPropertyAreas/ECLASS_ADV_V17/General/ManufacturerArticleNumber"]
-    assert (number.kind, number.cardinality, number.value_type) == ("Property", "One", "xs:string")
-    assert len(snapshot.concepts) == 99
+    data = snapshot.submodels["DemoLevelSensor"]
+    name = data["General/ManufacturerName"]
+    assert (name.kind, name.cardinality, name.value_type) == ("Property", "One", "xs:string")
+    assert data["MeasuringRange/ProcessTemperature"].kind == "Range"
+    assert len(snapshot.concepts) == 17
 
 
 def test_paths_follow_nesting(tmp_path):

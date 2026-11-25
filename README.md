@@ -11,12 +11,21 @@ from the command line or in a browser editor with a live preview.
 
 ```bash
 uv sync
-uv run excel-to-aasx import examples/Import_Properties_Schwebe_2_added_Li_v09_HOMI_Gerd-1.xlsx -o out/import.aasx
-uv run excel-to-aasx diff out/import.aasx "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx"
+uv run excel-to-aasx import src/excel_to_aasx/adapters/web/static/examples/demo-level-sensor.xlsx -o out/import.aasx
 uv run excel-to-aasx add-document out/import.aasx -o out/with-doc.aasx   # IDTA starter document
-uv run excel-to-aasx adoc "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/doc
-uv run excel-to-aasx pdf "examples/Namur_SMT_VariableAreaFlowMeters_v09_2nd_delivery (1).aasx" -o out/pdf
+uv run excel-to-aasx adoc out/with-doc.aasx -o out/doc
+uv run excel-to-aasx pdf out/with-doc.aasx -o out/pdf
+uv run excel-to-aasx diff out/import.aasx reference.aasx                # superset check against a reference
 ```
+
+The demo workbook has invented values (`tools/make_demo_workbook.py` writes it).
+
+### Reference files
+
+The project was built against a vendor workbook, AASX and PDF that may not be published, so they
+are not in git ([ADR 0010](docs/decisions/0010-reference-files-stay-out-of-git.md)). If you have
+them, put them in `examples/` (ignored by git) and compare by hand with `diff`. No test reads
+them; the tests use the demo workbook.
 
 ## Web app
 

@@ -98,4 +98,4 @@ A block is 6 *top* rows followed by *body* rows.
 ## 9. Language strings
 
 1. **[ours]** Cells holding several languages (`Explanation:`): `text@xx` is text in language `xx` only when `xx` looks like a language tag (`en`, `deu`, `de-DE`) and is followed by a space or the end of the cell. Text without a marker is `en`; text after the last marker is `en` too.
-2. PE treats every `@word` as a marker (`(.*?)@(\w+)`), so `support@krohne.com` became a language `krohne` with text `support`, which fails metamodel verification. No cell in the example workbook contains an `@`, so the outputs do not differ there.
+2. PE treats every `@word` as a marker (`(.*?)@(\w+)`), so `support@acme.example` became a language `acme` with text `support`, which fails metamodel verification. No cell in the example workbook contains an `@`, so the outputs do not differ there.

@@ -4,7 +4,8 @@ Converts vendor Excel property sheets (NAMUR SMT import format) into AASX packag
 (AAS metamodel V3.1), matching the "Import NAMUR SMTs" table import of the
 [AASX Package Explorer](https://github.com/eclipse-aaspe/package-explorer).
 
-Planned: AASX to AsciiDoc rendering, and a web editor with live PDF preview.
+It also renders a submodel as an IDTA-style AsciiDoc specification and builds the PDF,
+from the command line or in a browser editor with a live preview.
 
 ## Setup
 
@@ -24,10 +25,15 @@ uv run excel-to-aasx serve --port 8000
 ```
 
 Open http://127.0.0.1:8000, upload a workbook or an AASX, download the AASX, edit the AsciiDoc
-with a live HTML preview and build the PDF on request. Nothing is stored: sessions are
+with a live HTML preview and build the PDF on request. No workbook at hand? The home page offers
+a demo workbook with invented values (`tools/make_demo_workbook.py` writes it): convert it with
+one click, or download it to see the expected layout. Nothing is stored: sessions are
 temporary folders (`EXCEL_TO_AASX_WORKSPACES`, default in the system temp dir) deleted after
 two hours idle. Edits stay in the AsciiDoc download and the PDF; the AASX download contains the
 starter document, not the edits.
+
+To run the app with its PDF builder as containers: `docker compose up -d --build`
+(see [`docs/deployment.md`](docs/deployment.md)).
 
 `pdf` needs Docker and the image `asciidoctor/docker-asciidoctor:1.108.1`
 (`docker pull asciidoctor/docker-asciidoctor:1.108.1`). The build runs in a locked-down

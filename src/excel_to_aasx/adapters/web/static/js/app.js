@@ -131,6 +131,19 @@ $("drop").addEventListener("drop", (e) => {
   $("drop").classList.remove("over");
   handleFile(e.dataTransfer.files[0]);
 });
+$("try-example").addEventListener("click", async () => {
+  const button = $("try-example");
+  button.disabled = true;
+  try {
+    const response = await fetch("/static/examples/demo-level-sensor.xlsx");
+    if (!response.ok) throw new Error(`example not available (${response.status})`);
+    await handleFile(new File([await response.blob()], "demo-level-sensor.xlsx"));
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
 $("build-pdf").addEventListener("click", buildPdf);
 
 // Two clicks instead of a dialog: the session and unsaved edits are discarded.

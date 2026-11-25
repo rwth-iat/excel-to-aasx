@@ -11,7 +11,9 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from excel_to_aasx.adapters.web.files import read_limited, safe_child, zip_folder
+from excel_to_aasx.adapters.web.throttle import SessionThrottle
 from excel_to_aasx.adapters.web.workspaces import WorkspaceFull, Workspaces
+from excel_to_aasx.domain.diagram_source import RendererBusy
 from excel_to_aasx.domain.document.opened import OpenedDocument
 
 UPLOAD_TYPES = (".xlsx", ".aasx")
@@ -22,6 +24,7 @@ AASX_TYPE = "application/asset-administration-shell-package"
 class WebServices:
     open_upload: Callable[[str, str], OpenedDocument]
     compile_pdf: Callable[[str], tuple[str, list[str]]]
+    render_diagram: Callable[[str], bytes]
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,10 @@ class WebLimits:
     max_document_bytes: int = 2 * 1024 * 1024
     parallel_builds: int = 2
     parallel_uploads: int = 4
+    max_diagram_bytes: int = 64 * 1024
+    parallel_diagrams: int = 2
+    diagram_gap_seconds: float = 2.0
+    diagram_budget_seconds: float = 60.0  # render time per session per 10 minutes
     max_error_chars: int = 4000
 
 
@@ -40,6 +47,8 @@ class Api:
         self._limits = limits
         self._builds = threading.BoundedSemaphore(limits.parallel_builds)
         self._uploads = threading.BoundedSemaphore(limits.parallel_uploads)
+        self._diagrams = threading.BoundedSemaphore(limits.parallel_diagrams)
+        self._throttle = SessionThrottle(limits.diagram_gap_seconds, limits.diagram_budget_seconds)
 
     async def upload(self, file: UploadFile) -> JSONResponse:
         suffix = Path(file.filename or "").suffix.lower()
@@ -108,8 +117,34 @@ class Api:
         headers = {"X-Build-Messages": json.dumps(messages)[:2000]}
         return FileResponse(path, media_type="application/pdf", headers=headers)
 
+    async def diagram(self, workspace_id: str, request: Request) -> Response:
+        self._folder(workspace_id)
+        source = await self._text(request, self._limits.max_diagram_bytes)
+        if refused := self._throttle.start(workspace_id):
+            raise HTTPException(429, refused)
+        try:
+            svg = await self._render(source)
+        finally:
+            self._throttle.finish(workspace_id)
+        # Untrusted SVG: shown through <img>, and sandboxed if opened directly.
+        headers = {"Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'"}
+        return Response(svg, media_type="image/svg+xml", headers=headers)
+
+    async def _render(self, source: str) -> bytes:
+        if not self._diagrams.acquire(blocking=False):
+            raise HTTPException(429, "the diagram renderer is busy, try again in a few seconds")
+        try:
+            return await run_in_threadpool(self._services.render_diagram, source)
+        except RendererBusy as error:
+            raise HTTPException(429, str(error)) from error
+        except ValueError as error:
+            raise HTTPException(422, self._short(f"diagram failed: {error}")) from error
+        finally:
+            self._diagrams.release()
+
     def close(self, workspace_id: str) -> Response:
         self._workspaces.delete(workspace_id)
+        self._throttle.forget(workspace_id)
         return Response(status_code=204)
 
     def _short(self, message: str) -> str:
@@ -131,12 +166,12 @@ class Api:
         main.write_text(text, encoding="utf-8")
         return main
 
-    async def _text(self, request: Request) -> str:
-        limit, body = self._limits.max_document_bytes, b""
+    async def _text(self, request: Request, limit: int | None = None) -> str:
+        limit, body = limit or self._limits.max_document_bytes, b""
         async for chunk in request.stream():
             body += chunk
             if len(body) > limit:
-                raise HTTPException(413, f"document larger than {limit} bytes")
+                raise HTTPException(413, f"text larger than {limit} bytes")
         try:
             return body.decode("utf-8")
         except UnicodeDecodeError as error:

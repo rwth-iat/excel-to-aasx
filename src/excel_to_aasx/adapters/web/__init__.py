@@ -35,6 +35,7 @@ def create_app(services: WebServices, workspaces: Workspaces, limits: WebLimits)
     app.add_api_route(base + "/{workspace_id}/document", api.save, methods=["PUT"])
     app.add_api_route(base + "/{workspace_id}/document.zip", api.download_zip, methods=["GET"])
     app.add_api_route(base + "/{workspace_id}/pdf", api.pdf, methods=["POST"])
+    app.add_api_route(base + "/{workspace_id}/diagram", api.diagram, methods=["POST"])
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
     return app
 

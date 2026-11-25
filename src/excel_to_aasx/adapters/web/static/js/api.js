@@ -33,6 +33,12 @@ export async function buildPdf(id, text) {
   return { pdf: await response.blob(), messages };
 }
 
+export async function renderDiagram(id, source) {
+  const response = await fetch(`${base(id)}/diagram`, { method: "POST", body: source });
+  if (!response.ok) throw await failure(response);
+  return response.blob();
+}
+
 export async function closeWorkspace(id) {
   await fetch(base(id), { method: "DELETE" });
 }

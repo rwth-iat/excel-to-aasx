@@ -31,18 +31,24 @@ def _fake_pdf(adoc: str) -> tuple[str, list[str]]:
     return str(target), ["asciidoctor: WARNING: fake"]
 
 
+def _fake_svg(source: str) -> bytes:
+    if "boom" in source:
+        raise ValueError("boom")
+    return f"<svg><text>{len(source)}</text></svg>".encode()
+
+
 def _add_document(editor, source, target, submodel):
     return add_document(editor, load_frame, source, target, submodel, datetime.date(2026, 11, 19))
 
 
-def _app(tmp_path, compile_pdf=_fake_pdf, **limits):
+def _app(tmp_path, compile_pdf=_fake_pdf, render_diagram=_fake_svg, **limits):
     editor = AasxDocumentEditor(LIMIT)
     import_ = partial(import_workbook, ExcelSheetReader(LIMIT), AasxPackageWriter())
     add = partial(_add_document, editor)
     export = partial(export_document, AasxDocumentReader(LIMIT), FolderDocumentWriter())
     opener = partial(open_upload, import_, add, partial(has_document, editor), export)
     workspaces = Workspaces(tmp_path / "ws", idle_seconds=60, max_count=limits.pop("max_count", 10))
-    app = create_app(WebServices(opener, compile_pdf), workspaces, WebLimits(**limits))
+    app = create_app(WebServices(opener, compile_pdf, render_diagram), workspaces, WebLimits(**limits))
     return TestClient(app), workspaces
 
 

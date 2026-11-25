@@ -7,10 +7,12 @@ services:
     ports: ["127.0.0.1:${APP_PORT:-8000}:8000"]
     environment:
       EXCEL_TO_AASX_BUILDER_URL: http://builder:8080
+      EXCEL_TO_AASX_DIAGRAM_URL: http://diagrams:8080
     volumes: [workspaces:/data/workspaces]
     networks: [public, builds]
     depends_on:
       builder: { condition: service_healthy }
+      diagrams: { condition: service_healthy }
     read_only: true
     tmpfs: ["/tmp:size=256m"]
     cap_drop: [ALL]
@@ -21,6 +23,8 @@ services:
 
   builder:
     build: { context: ., dockerfile: builder/Dockerfile }
+    environment:
+      BUILDER_PARALLEL_DIAGRAMS: 0   # diagrams go to their own service, never compete with PDFs
     networks: [builds]          # internal only: no internet, not reachable from outside
     read_only: true
     tmpfs: ["/tmp:size=1g"]
@@ -29,6 +33,23 @@ services:
     mem_limit: 2g
     pids_limit: 512
     cpus: 2
+    restart: unless-stopped
+
+  # Live-preview diagrams (ADR 0011): same image, PDF builds off, one CPU for all renders
+  # together, so a flood of diagrams can never slow down PDF builds or the app.
+  diagrams:
+    build: { context: ., dockerfile: builder/Dockerfile }
+    environment:
+      BUILDER_PARALLEL: 0
+      BUILDER_PARALLEL_DIAGRAMS: 2
+    networks: [builds]
+    read_only: true
+    tmpfs: ["/tmp:size=256m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 768m
+    pids_limit: 128
+    cpus: 1
     restart: unless-stopped
 
 networks:

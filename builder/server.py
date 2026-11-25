@@ -4,7 +4,8 @@ Runs inside the asciidoctor/docker-asciidoctor image on an internal network with
 access. Standard library only (Python 3.12 in that image). Every request is untrusted: the
 document comes from an anonymous web user.
 
-POST /build   body: ZIP of a flat folder; header X-Main-File: the .adoc to build
+POST /build     body: ZIP of a flat folder; header X-Main-File: the .adoc to build
+POST /diagram   body: PlantUML text (UTF-8); returns SVG (ADR 0011)
 GET  /health
 """
 
@@ -12,8 +13,10 @@ import io
 import json
 import os
 import re
+import resource
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import zipfile
@@ -29,6 +32,27 @@ EXTENSION = os.environ.get("BUILDER_EXTENSION", "/opt/builder/numbered_paragraph
 THEME = "my-theme.yml"
 NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*")
 BUILDS = threading.BoundedSemaphore(int(os.environ.get("BUILDER_PARALLEL", 2)))
+# The jar asciidoctor-diagram ships in the image. Same JVM arguments as
+# src/excel_to_aasx/adapters/pdf/diagram.py (a test keeps them equal): one core, small heap,
+# the sandbox on the command line (not only in the image ENV), a bounded image size.
+PLANTUML_JAR = os.environ.get(
+    "BUILDER_PLANTUML_JAR",
+    "/usr/lib/ruby/gems/3.4.0/gems/asciidoctor-diagram-plantuml-1.2026.2"
+    "/lib/asciidoctor-diagram/plantuml/plantuml-lgpl-1.2026.2.jar",
+)
+JAVA_ARGS = [
+    "java", "-Xmx256m", "-Xss1m", "-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC",
+    "-Djava.awt.headless=true",
+    "-DPLANTUML_SECURITY_PROFILE=SANDBOX", "-DPLANTUML_LIMIT_SIZE=8192",
+    "-jar", PLANTUML_JAR, "-tsvg", "-pipe",
+]  # fmt: skip
+MAX_DIAGRAM_BYTES = 64 * 1024
+MAX_SVG_BYTES = 5 * 1024 * 1024
+DIAGRAM_TIMEOUT_SECONDS = 15
+CPU_SECONDS = 10  # below the wall-clock timeout, so a busy render is cut off first
+MARKER = re.compile(rb"^\s*@(start|end)\w*", re.MULTILINE)
+NEWPAGE = re.compile(rb"^\s*newpage\b", re.MULTILINE)
+DIAGRAMS = threading.BoundedSemaphore(int(os.environ.get("BUILDER_PARALLEL_DIAGRAMS", 2)))
 
 
 class BuildError(Exception):
@@ -101,6 +125,64 @@ def build(data: bytes, main: str) -> tuple[bytes, list[str]]:
         return pdf.read_bytes(), messages
 
 
+def diagram_command() -> list[str]:
+    """Limits are set in a fresh interpreter just before exec: preexec_fn is unsafe in threads."""
+    limits = [str(CPU_SECONDS), str(MAX_SVG_BYTES)]
+    return [sys.executable, os.path.abspath(__file__), "--exec-limited", *limits, *JAVA_ARGS]
+
+
+def exec_limited(argv: list[str]) -> None:
+    """CPU seconds (SIGXCPU), file size (SIGXFSZ, the SVG is written to a file), low priority."""
+    cpu_seconds, max_bytes, command = int(argv[0]), int(argv[1]), argv[2:]
+    # Soft limit sends SIGXCPU; the hard one, a second later, SIGKILL for anything that ignores it.
+    resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 1))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (max_bytes, max_bytes))
+    os.nice(10)
+    os.execvp(command[0], command)  # noqa: S606 - fixed argument list from diagram_command
+
+
+def check_single_uml(source: bytes) -> None:
+    """The app checks this too (domain/diagram_source.py); -pipe renders every pair."""
+    markers = [m.group(0).strip() for m in MARKER.finditer(source)]
+    if (
+        len(markers) != 2
+        or not markers[0].startswith(b"@startuml")
+        or markers[1] != b"@enduml"
+        or NEWPAGE.search(source)
+    ):
+        raise BuildError(HTTPStatus.BAD_REQUEST, "expected one @startuml ... @enduml diagram")
+
+
+def render_diagram(source: bytes) -> bytes:
+    """PlantUML draws syntax errors into the SVG, so a non-zero exit with an SVG is a result."""
+    check_single_uml(source)
+    with tempfile.TemporaryDirectory(prefix="diagram-") as tmp:
+        svg_file = Path(tmp) / "out.svg"
+        with svg_file.open("wb") as out:
+            process = subprocess.Popen(  # noqa: S603 - argument list, no shell
+                diagram_command(), cwd=tmp, stdin=subprocess.PIPE, stdout=out,
+                stderr=subprocess.DEVNULL, start_new_session=True,
+            )  # fmt: skip
+            try:
+                process.communicate(source, timeout=DIAGRAM_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired as error:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.communicate()
+                raise BuildError(
+                    HTTPStatus.GATEWAY_TIMEOUT,
+                    f"diagram took longer than {DIAGRAM_TIMEOUT_SECONDS}s",
+                ) from error
+        output = svg_file.read_bytes()
+    if process.returncode == -signal.SIGXFSZ or len(output) >= MAX_SVG_BYTES:
+        raise BuildError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "diagram SVG too large")
+    if process.returncode in (-signal.SIGXCPU, -signal.SIGKILL):
+        raise BuildError(HTTPStatus.UNPROCESSABLE_ENTITY, "diagram used too much CPU time")
+    start = output.find(b"<svg")
+    if start < 0:
+        raise BuildError(HTTPStatus.UNPROCESSABLE_ENTITY, "PlantUML produced no SVG")
+    return output[start:]
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "pdf-builder"
     sys_version = ""
@@ -112,6 +194,9 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(HTTPStatus.NOT_FOUND, b"not found", "text/plain")
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.path == "/diagram":
+            self._diagram()
+            return
         if self.path != "/build":
             self._reply(HTTPStatus.NOT_FOUND, b"not found", "text/plain")
             return
@@ -136,6 +221,26 @@ class Handler(BaseHTTPRequestHandler):
             HTTPStatus.OK, pdf, "application/pdf", {"X-Build-Messages": json.dumps(messages)[:4000]}
         )
 
+    def _diagram(self) -> None:
+        length = self.headers.get("Content-Length", "")
+        if not length.isdigit() or int(length) > MAX_DIAGRAM_BYTES:
+            self._reply(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE, b"missing or too large body", "text/plain"
+            )
+            return
+        source = self.rfile.read(int(length))
+        if not DIAGRAMS.acquire(blocking=False):
+            self._reply(HTTPStatus.TOO_MANY_REQUESTS, b"builder busy", "text/plain")
+            return
+        try:
+            svg = render_diagram(source)
+        except BuildError as error:
+            self._reply(error.status, str(error).encode("utf-8", "replace"), "text/plain")
+            return
+        finally:
+            DIAGRAMS.release()
+        self._reply(HTTPStatus.OK, svg, "image/svg+xml")
+
     def _reply(
         self, status: HTTPStatus, body: bytes, content_type: str, extra: dict | None = None
     ) -> None:
@@ -158,4 +263,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--exec-limited"]:
+        exec_limited(sys.argv[2:])
     main()

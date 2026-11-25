@@ -14,6 +14,7 @@ from excel_to_aasx.adapters.aasx.document_submodel import AasxDocumentEditor
 from excel_to_aasx.adapters.excel import ExcelSheetReader
 from excel_to_aasx.adapters.files import FolderDocumentWriter
 from excel_to_aasx.adapters.pdf import DockerPdfCompiler
+from excel_to_aasx.adapters.pdf.diagram import DockerDiagramRenderer, RemoteDiagramRenderer
 from excel_to_aasx.adapters.pdf.remote import RemotePdfCompiler
 from excel_to_aasx.adapters.templates import load_frame
 from excel_to_aasx.adapters.web import WebLimits, WebServices, Workspaces, create_app
@@ -23,12 +24,15 @@ from excel_to_aasx.app.compare_packages import compare_packages
 from excel_to_aasx.app.export_document import export_document
 from excel_to_aasx.app.import_workbook import import_workbook
 from excel_to_aasx.app.open_upload import open_upload
+from excel_to_aasx.app.render_diagram import render_diagram
+from excel_to_aasx.ports.diagram_renderer import DiagramRenderer
 
 MAX_PACKAGE_PART_BYTES = 200 * 1024 * 1024
 MAX_WORKBOOK_BYTES = 200 * 1024 * 1024
 # Pinned: the PDF layout depends on asciidoctor-pdf's version (ADR 0004).
 ASCIIDOCTOR_IMAGE = "asciidoctor/docker-asciidoctor:1.108.1"
 PDF_TIMEOUT_SECONDS = 300
+DIAGRAM_TIMEOUT_SECONDS = 30
 WORKSPACE_IDLE_SECONDS = 2 * 60 * 60
 MAX_WORKSPACES = 200
 
@@ -53,7 +57,11 @@ def main() -> int:
     add = partial(_add_document, editor)
     opener = partial(open_upload, import_, add, partial(has_document, editor), export)
     compiler = _pdf_compiler()
-    web = WebServices(open_upload=opener, compile_pdf=compiler.compile)
+    web = WebServices(
+        open_upload=opener,
+        compile_pdf=compiler.compile,
+        render_diagram=partial(render_diagram, _diagram_renderer()),
+    )
     serve = partial(_serve, web)
     return cli.run(
         sys.argv[1:],
@@ -71,6 +79,15 @@ def _pdf_compiler() -> DockerPdfCompiler | RemotePdfCompiler:
     if url := os.environ.get("EXCEL_TO_AASX_BUILDER_URL"):
         return RemotePdfCompiler(url, PDF_TIMEOUT_SECONDS)
     return DockerPdfCompiler(ASCIIDOCTOR_IMAGE, PDF_TIMEOUT_SECONDS)
+
+
+def _diagram_renderer() -> DiagramRenderer:
+    """The diagram service, else the builder, else a container per diagram (ADR 0011)."""
+    if url := os.environ.get("EXCEL_TO_AASX_DIAGRAM_URL") or os.environ.get(
+        "EXCEL_TO_AASX_BUILDER_URL"
+    ):
+        return RemoteDiagramRenderer(url, DIAGRAM_TIMEOUT_SECONDS)
+    return DockerDiagramRenderer(ASCIIDOCTOR_IMAGE, DIAGRAM_TIMEOUT_SECONDS)
 
 
 def _serve(services: WebServices, host: str, port: int) -> None:

@@ -52,7 +52,7 @@ class DockerPdfCompiler:
             "--security-opt", "no-new-privileges",
             "--read-only", "--tmpfs", "/tmp:rw,size=256m",  # noqa: S108 - inside the container
             "--memory", self._memory, "--pids-limit", "256", "--cpus", "2",
-            "-e", "HOME=/tmp",
+            "-e", "HOME=/tmp", "-e", "PLANTUML_SECURITY_PROFILE=SANDBOX",
             "-v", f"{folder}:/documents:rw",
             "-v", f"{EXTENSIONS}:/extensions:ro",
             "-w", "/documents",

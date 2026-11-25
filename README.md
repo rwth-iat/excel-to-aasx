@@ -42,3 +42,9 @@ workbook cannot be read. `diff` exits 1 when differences were found.
 - AsciiDoc export rules: [`docs/spec/asciidoc-export.md`](docs/spec/asciidoc-export.md)
 - Deployment: [`docs/deployment.md`](docs/deployment.md)
 - Decisions: [`docs/decisions/`](docs/decisions/)
+
+## License
+
+Apache License 2.0, see [`LICENSE`](LICENSE). Parts of the code are ports of the Eclipse AASX
+Package Explorer (also Apache 2.0); [`NOTICE`](NOTICE) lists them and the third-party files.
+The reference files in `examples/` are third-party material, not part of this repository.

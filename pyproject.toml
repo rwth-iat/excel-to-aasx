@@ -3,6 +3,8 @@ name = "excel-to-aasx"
 version = "0.1.0"
 description = "Convert vendor Excel property sheets into AASX packages (AAS metamodel V3.1)"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 dependencies = [
     "aas-core3.1>=1.0,<2",
